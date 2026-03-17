@@ -2,7 +2,7 @@
  * Node: Decisão Técnica
  * Workflow: Software Risk Assessment
  * Descrição: Gera parecer técnico automatizado com base nos dados coletados
- * Autor: Kaosikner
+ * Autor: domcabral9
  * Data: 2026-03
  */
 
