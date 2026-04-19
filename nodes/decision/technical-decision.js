@@ -1,9 +1,14 @@
 /**
- * Node: Decisão Técnica
+ * Node: Decisão Técnica (Versão alinhada ao modelo ponderado)
  * Workflow: Software Risk Assessment
- * Descrição: Gera parecer técnico automatizado com base nos dados coletados
+ * Descrição: Gera parecer técnico baseado em score ponderado (1-5) e contexto
  * Autor: domcabral9
- * Data: 2026-03
+ * Data: 2026-04
+ *
+ * Objetivo:
+ * - Tornar o parecer mais explicável
+ * - Alinhar com classificação: Homologado / Aguardando Ajustes / Rejeitado
+ * - Considerar contexto (hosting, criticidade, dados, exposição)
  */
 
 function normalizeBoolean(value) {
@@ -11,45 +16,94 @@ function normalizeBoolean(value) {
   return value.toString().trim().toLowerCase() === "sim";
 }
 
+function normalizeText(value) {
+  if (!value) return "Não informado";
+  return value.toString().trim();
+}
+
 const data = { ...$json };
 
+const appName = normalizeText(data.APP_NAME);
+const criticality = normalizeText(data.APP_CRITICALITY);
+const hosting = normalizeText(data.INFRA_HOSTING);
+const classification = data.risk_classification || "Não classificado";
+const score = data.risk_score || "N/A";
+
+/**
+ * Construção do parecer
+ */
 let parecer = `
-Parecer Técnico de Avaliação de Software
+PARECER TÉCNICO DE AVALIAÇÃO DE SOFTWARE
 
-Aplicação: ${data.app_name}
-Criticidade declarada: ${data.criticality}
+Aplicação: ${appName}
+Criticidade: ${criticality}
+Modelo de hospedagem: ${hosting}
 
-Classificação automática de risco: ${data.risk_level}
-Score de risco: ${data.risk_score}
+Score final (1-5): ${score}
+Classificação: ${classification}
 
 Resumo da análise:
 `;
 
-let pontosAtencao = [];
 let pontosPositivos = [];
+let pontosAtencao = [];
+let riscosCriticos = [];
 
-// Avaliações
-if (normalizeBoolean(data.internet_exposed)) {
-  pontosAtencao.push("A aplicação possui exposição à internet.");
-}
+/**
+ * Avaliação baseada em critérios (alinhado ao novo modelo)
+ */
 
-if (normalizeBoolean(data.personal_data)) {
-  pontosAtencao.push("A aplicação processa ou armazena dados pessoais.");
-}
-
-if (!normalizeBoolean(data.mfa)) {
-  pontosAtencao.push("Não foi identificado uso de autenticação multifator (MFA).");
+// Exposição
+if (normalizeBoolean(data.INFRA_INTERNET_EXPOSED)) {
+  pontosAtencao.push("Aplicação exposta à internet, aumentando a superfície de ataque.");
 } else {
-  pontosPositivos.push("Uso de autenticação multifator (MFA) habilitado.");
+  pontosPositivos.push("Aplicação sem exposição direta à internet.");
 }
 
-if (!normalizeBoolean(data.sso)) {
-  pontosAtencao.push("Não foi identificado uso de autenticação centralizada (SSO).");
+// Dados pessoais
+if (normalizeBoolean(data.DATA_PERSONAL_DATA)) {
+  riscosCriticos.push("Processamento de dados pessoais identificado (impacto regulatório e LGPD).");
 } else {
-  pontosPositivos.push("Uso de autenticação centralizada (SSO) habilitado.");
+  pontosPositivos.push("Não há indicação de tratamento de dados pessoais.");
 }
 
-// Montagem do resumo
+// MFA
+if (!normalizeBoolean(data.SEC_MFA)) {
+  riscosCriticos.push("Ausência de autenticação multifator (MFA).");
+} else {
+  pontosPositivos.push("MFA habilitado.");
+}
+
+// SSO
+if (!normalizeBoolean(data.SEC_SSO)) {
+  pontosAtencao.push("Ausência de autenticação centralizada (SSO).");
+} else {
+  pontosPositivos.push("SSO implementado.");
+}
+
+// RBAC
+if (!normalizeBoolean(data.SEC_ROLE_BASED_ACCESS)) {
+  pontosAtencao.push("Controle de acesso baseado em papéis (RBAC) não identificado.");
+} else {
+  pontosPositivos.push("RBAC implementado.");
+}
+
+// Logging
+if (!normalizeBoolean(data.SEC_AUDIT_LOGGING)) {
+  pontosAtencao.push("Ausência de trilhas de auditoria (logging). Possível dificuldade em investigações.");
+} else {
+  pontosPositivos.push("Auditoria e logging habilitados.");
+}
+
+// Integrações
+if (data.APP_INTEGRATIONS && data.APP_INTEGRATIONS !== "Não") {
+  pontosAtencao.push("A aplicação possui integrações externas (avaliar risco de cadeia/supply chain).");
+}
+
+/**
+ * Montagem estruturada
+ */
+
 if (pontosPositivos.length > 0) {
   parecer += "\nPontos positivos:\n";
   pontosPositivos.forEach(p => {
@@ -64,29 +118,70 @@ if (pontosAtencao.length > 0) {
   });
 }
 
-// Recomendação inteligente
+if (riscosCriticos.length > 0) {
+  parecer += "\nRiscos críticos:\n";
+  riscosCriticos.forEach(r => {
+    parecer += `- ${r}\n`;
+  });
+}
+
+/**
+ * Recomendação baseada no novo modelo
+ */
+
 let recomendacao = "";
 
-if (data.risk_level === "Alto") {
-  recomendacao = "A aplicação apresenta risco elevado e não deve ser aprovada sem mitigação dos pontos críticos identificados.";
-} else if (data.risk_level === "Médio") {
-  recomendacao = "A aplicação pode ser aprovada mediante avaliação adicional e definição de controles compensatórios.";
-} else {
-  recomendacao = "A aplicação apresenta baixo risco, porém recomenda-se validação final da equipe de segurança.";
+switch (classification) {
+  case "Homologado":
+    recomendacao = "A aplicação atende aos critérios mínimos de segurança e pode ser homologada para uso.";
+    break;
+
+  case "Aguardando Ajustes":
+    recomendacao = "A aplicação apresenta riscos moderados. Recomenda-se a implementação de melhorias antes da homologação definitiva.";
+    break;
+
+  case "Rejeitado":
+    recomendacao = "A aplicação apresenta riscos elevados e não deve ser homologada até a mitigação dos pontos críticos.";
+    break;
+
+  default:
+    recomendacao = "Não foi possível determinar uma recomendação automática. Avaliação manual necessária.";
 }
 
-// Ajuste por criticidade (regra de negócio)
-if (data.criticality === "Alta") {
-  recomendacao += " Devido à alta criticidade, a avaliação manual da equipe de segurança é obrigatória.";
+/**
+ * Regras adicionais de negócio (camada estratégica)
+ */
+
+// Alta criticidade exige revisão manual
+if (criticality === "Alta") {
+  recomendacao += " Devido à alta criticidade, é obrigatória validação manual pela equipe de segurança.";
 }
 
-parecer += `
-Recomendação:
+// Dados pessoais + ausência de MFA = bloqueio forte
+if (normalizeBoolean(data.DATA_PERSONAL_DATA) && !normalizeBoolean(data.SEC_MFA)) {
+  recomendacao += " A ausência de MFA em contexto com dados pessoais é um fator impeditivo para homologação.";
+}
 
-${recomendacao}
-`;
+// SaaS sem SSO é um risco relevante
+if (hosting === "SaaS" && !normalizeBoolean(data.SEC_SSO)) {
+  recomendacao += " Para soluções SaaS, a ausência de SSO representa risco elevado de gestão de identidade.";
+}
+
+parecer += `\nRecomendação:\n\n${recomendacao}\n`;
+
+/**
+ * Saída final
+ */
 
 data.technical_opinion = parecer;
+
+data.technical_metadata = {
+  classification,
+  score,
+  criticality,
+  hosting,
+  riscosCriticosCount: riscosCriticos.length
+};
 
 return [
   {
