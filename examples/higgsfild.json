@@ -1,0 +1,73 @@
+[
+  {
+    "app_name": "Higgsfild IA",
+    "app_criticality": "Média",
+    "infra_internet_exposed": "Sim",
+    "data_personal_data": "Não",
+    "sec_mfa": "Sim",
+    "sec_sso": "Sim",
+    "risk_score": 3.2,
+    "technical_opinion": "\nPARECER TÉCNICO DE AVALIAÇÃO DE SOFTWARE\n\nAplicação: Higgsfild IA\nCriticidade: Não informado\nModelo de hospedagem: Não informado\n\nScore final (1-5): 3.2\nClassificação: Homologado com Ressalvas\n\nResumo da análise:\n\nPontos positivos:\n- Não há indicação de tratamento de dados pessoais.\n\nPontos de atenção:\n- Aplicação exposta à internet, aumentando a superfície de ataque.\n- Ausência de autenticação centralizada (SSO).\n- Controle de acesso baseado em papéis (RBAC) não identificado.\n- Ausência de trilhas de auditoria (logging). Possível dificuldade em investigações.\n\nRiscos críticos:\n- Ausência de autenticação multifator (MFA).\n\nRecomendação:\n\nA aplicação pode ser homologada mediante avaliação complementar e aceite dos riscos identificados.",
+    "risk_level": "Médio",
+    "analysis_date": "  ",
+    "form_timestamp": "  4/19/2026 13:28:09",
+    "resp_manager_area": "  Marketplace",
+    "app_purpose": "Criação de Videos com IA",
+    "analysis_status": "",
+    "sec_role_based_access": "Sim",
+    "sec_audit_logging": "Não sei informar",
+    "infra_hosting": "SaaS",
+    "risk_flag": "STANDARD_APPLICATION",
+    "normalized": {
+      "app_name": "Higgsfild IA",
+      "criticality": "Não informado",
+      "hosting": "Não informado",
+      "internet_exposed": true,
+      "personal_data": false,
+      "mfa": false,
+      "sso": false,
+      "rbac": false,
+      "audit": false
+    },
+    "analysis": {
+      "risk_score": 3.2,
+      "risk_level": "Médio",
+      "recommendation": "Homologado com Ressalvas"
+    },
+    "debug_score": {
+      "normalized": {
+        "app_name": "Higgsfild IA",
+        "criticality": "Não informado",
+        "hosting": "Não informado",
+        "internet_exposed": true,
+        "personal_data": false,
+        "mfa": false,
+        "sso": false,
+        "rbac": false,
+        "audit": false
+      },
+      "scores": {
+        "criticality": 2,
+        "internet_exposed": 5,
+        "personal_data": 1,
+        "mfa": 5,
+        "sso": 3,
+        "rbac": 3,
+        "audit": 3
+      },
+      "weights": {
+        "criticality": 2,
+        "internet_exposed": 1.5,
+        "personal_data": 1.5,
+        "mfa": 2,
+        "sso": 1,
+        "rbac": 1,
+        "audit": 1
+      },
+      "weighted_sum": 32,
+      "total_weight": 10,
+      "final_score": 3.2
+    },
+    "recommendation": "Homologado com Ressalvas"
+  }
+]
