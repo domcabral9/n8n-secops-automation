@@ -3,7 +3,7 @@
  * Workflow: Software Risk Assessment
  * Descrição: Calcula score ponderado (1-5) baseado em critérios de segurança e contexto de hosting
  * Autor: domcabral9
- * Data: 2026-04
+ * Data: 2026-05
  *
  /**
  * Node: Gerador de Score (Versão HARDENED v4 - Context Aware)
@@ -17,243 +17,207 @@
  * - Debug completo
  */
 
-function normalizeTriState(value) {
-  if (value === undefined || value === null) return "unknown";
-  if (typeof value === "boolean") return value;
-  const v = value.toString().trim().toLowerCase();
-  if (["sim", "true", "1", "yes"].includes(v)) return true;
-  if (["não", "nao", "false", "0", "no"].includes(v)) return false;
-  return "unknown";
+ /**
+ * risk-score-generator.js
+ *
+ * Responsável por:
+ * 1. Normalizar os dados recebidos do formulário
+ * 2. Calcular score de risco
+ * 3. Retornar um objeto padronizado para os próximos nodes
+ */
+
+const raw = $json;
+
+/**
+ * Normalização booleana
+ * Aceita boolean, string e valores do formulário
+ */
+function normalizeBoolean(value) {
+  if (value === true) return true;
+  if (value === false) return false;
+
+  if (!value) return false;
+
+  const normalized = value
+    .toString()
+    .trim()
+    .toLowerCase();
+
+  return [
+    'sim',
+    'true',
+    '1',
+    'yes',
+    'externo - internet',
+    'armazena dados pessoais internos (colaboradores)',
+    'armazena dados de clientes',
+    'armazena dados sensíveis'
+  ].includes(normalized);
 }
 
-function normalizeText(value) {
-  if (!value) return "";
-  return value.toString().trim();
-}
+/**
+ * Normalização centralizada
+ * Todos os próximos nodes devem consumir apenas estes campos
+ */
+const normalized = {
+  app_name:
+    raw.app_name ||
+    raw.APP_NAME ||
+    'Não informado',
 
-function normalizeKeys(obj) {
-  const newObj = {};
-  Object.keys(obj).forEach(key => {
-    const normalizedKey = key.trim().toLowerCase();
-    newObj[normalizedKey] = obj[key];
-  });
-  return newObj;
-}
+  criticality:
+    raw.criticality ||
+    raw.app_criticality ||
+    raw.APP_CRITICALITY ||
+    'Não informado',
 
-function pick(data, ...fields) {
-  for (const field of fields) {
-    const f = field.toLowerCase();
-    if (data[f] !== undefined && data[f] !== null) {
-      return data[f];
-    }
-  }
-  return undefined;
-}
+  hosting:
+    raw.hosting ||
+    raw.infra_hosting ||
+    raw.INFRA_HOSTING ||
+    'Não informado',
 
-const rawData = { ...$json };
-const data = normalizeKeys(rawData);
+  internet_exposed: normalizeBoolean(
+    raw.internet_exposed ||
+    raw.infra_internet_exposed ||
+    raw.INFRA_INTERNET_EXPOSED
+  ),
 
-// =========================
-// EXTRAÇÃO
-// =========================
+  personal_data: normalizeBoolean(
+    raw.personal_data ||
+    raw.data_personal_data ||
+    raw.DATA_PERSONAL_DATA
+  ),
 
-const criticality = normalizeText(pick(data, "app_criticality", "criticality"));
-const hosting = normalizeText(pick(data, "infra_hosting", "hosting")).toLowerCase();
+  mfa: normalizeBoolean(
+    raw.mfa ||
+    raw.sec_mfa ||
+    raw.SEC_MFA
+  ),
 
-const internetExposed = normalizeTriState(pick(data, "infra_internet_exposed", "internet_exposed"));
-const personalData = normalizeTriState(pick(data, "data_personal_data", "personal_data"));
-const mfa = normalizeTriState(pick(data, "sec_mfa", "mfa"));
-const sso = normalizeTriState(pick(data, "sec_sso", "sso"));
-const rbac = normalizeTriState(pick(data, "sec_role_based_access", "role_based_access"));
-const audit = normalizeTriState(pick(data, "sec_audit_logging", "audit_logging"));
+  sso: normalizeBoolean(
+    raw.sso ||
+    raw.sec_sso ||
+    raw.SEC_SSO
+  ),
 
-// =========================
-// PESOS POR CONTEXTO
-// =========================
+  rbac: normalizeBoolean(
+    raw.rbac ||
+    raw.sec_role_based_access ||
+    raw.SEC_ROLE_BASED_ACCESS
+  ),
 
-let weightProfile = {
-  criticality: 1,
-  internet_exposed: 1,
-  personal_data: 1,
-  mfa: 1,
-  sso: 1,
-  rbac: 1,
-  audit_log: 1
+  audit: normalizeBoolean(
+    raw.audit ||
+    raw.sec_audit_logging ||
+    raw.SEC_AUDIT_LOGGING
+  )
 };
 
-switch (hosting) {
-  case "saas":
-    weightProfile = {
-      criticality: 1.2,
-      internet_exposed: 0.8,
-      personal_data: 1.3,
-      mfa: 1.3,
-      sso: 1.2,
-      rbac: 1.1,
-      audit_log: 1.1
-    };
-    break;
-
-  case "cloud fornecedor":
-  case "cloud publica":
-    weightProfile = {
-      criticality: 1.2,
-      internet_exposed: 1.2,
-      personal_data: 1.3,
-      mfa: 1.3,
-      sso: 1.2,
-      rbac: 1.1,
-      audit_log: 1.1
-    };
-    break;
-
-  case "on-premise":
-    weightProfile = {
-      criticality: 1.1,
-      internet_exposed: 1.3,
-      personal_data: 1.1,
-      mfa: 1.2,
-      sso: 0.5,
-      rbac: 1.2,
-      audit_log: 1.3
-    };
-    break;
-}
-
-// =========================
-// SCORE FUNCTIONS
-// =========================
-
-function scoreCriticality(value) {
-  const v = value.toLowerCase();
-  if (v === "alta") return 1;
-  if (v === "média" || v === "media") return 3;
-  if (v === "baixa") return 5;
-  return 2;
-}
-
-function scoreSSO(sso, context) {
-  const { hosting, personalData, criticality } = context;
-
-  if (!personalData && criticality !== "Alta") return 5;
-  if (hosting === "on-premise") return 4;
-
-  if (sso === true) return 5;
-  if (sso === false) return 1;
-  return 3;
-}
-
-function scoreExposure(internetExposed, context) {
-  const { hosting, mfa } = context;
-
-  if (hosting === "saas") {
-    return mfa === true ? 4 : 2;
-  }
-
-  if (internetExposed === true) {
-    return mfa === true ? 3 : 1;
-  }
-
-  return 5;
-}
-
-function scorePersonalData(personalData, controls) {
-  if (personalData !== true) return 5;
-
-  let protectionLevel = 0;
-  if (controls.mfa === true) protectionLevel++;
-  if (controls.rbac === true) protectionLevel++;
-  if (controls.audit === true) protectionLevel++;
-
-  if (protectionLevel >= 3) return 5;
-  if (protectionLevel === 2) return 4;
-  if (protectionLevel === 1) return 2;
-
-  return 1;
-}
-
-function scoreBoolean(tri) {
-  if (tri === true) return 5;
-  if (tri === false) return 1;
-  return 3;
-}
-
-// =========================
-// CONTEXT
-// =========================
-
-const context = {
-  hosting,
-  personalData: personalData === true,
-  criticality,
-  mfa
+/**
+ * Pesos de risco
+ */
+const weights = {
+  criticality: 2.0,
+  internet_exposed: 1.5,
+  personal_data: 1.5,
+  mfa: 2.0,
+  sso: 1.0,
+  rbac: 1.0,
+  audit: 1.0
 };
 
-// =========================
-// SCORES
-// =========================
-
+/**
+ * Score individual por critério
+ */
 const scores = {
-  criticality: scoreCriticality(criticality),
-  internet_exposed: scoreExposure(internetExposed, context),
-  personal_data: scorePersonalData(personalData, { mfa, rbac, audit }),
-  mfa: scoreBoolean(mfa),
-  sso: scoreSSO(sso, context),
-  rbac: scoreBoolean(rbac),
-  audit_log: scoreBoolean(audit)
+  criticality: 1,
+  internet_exposed: normalized.internet_exposed ? 5 : 1,
+  personal_data: normalized.personal_data ? 5 : 1,
+  mfa: normalized.mfa ? 1 : 5,
+  sso: normalized.sso ? 1 : 3,
+  rbac: normalized.rbac ? 1 : 3,
+  audit: normalized.audit ? 1 : 3
 };
 
-// =========================
-// CALCULO
-// =========================
+/**
+ * Ajuste de criticidade
+ */
+switch (normalized.criticality.toLowerCase()) {
+  case 'crítica':
+  case 'critica':
+    scores.criticality = 5;
+    break;
 
-let weightedSum = 0;
-let totalWeight = 0;
+  case 'alta':
+    scores.criticality = 4;
+    break;
+
+  case 'média':
+  case 'media':
+    scores.criticality = 3;
+    break;
+
+  case 'baixa':
+    scores.criticality = 1;
+    break;
+
+  default:
+    scores.criticality = 2;
+}
+
+/**
+ * Cálculo ponderado
+ */
+let weighted_sum = 0;
+let total_weight = 0;
 
 for (const key in scores) {
-  const weight = weightProfile[key] || 1;
-  weightedSum += scores[key] * weight;
-  totalWeight += weight;
+  weighted_sum += scores[key] * weights[key];
+  total_weight += weights[key];
 }
 
-const finalScore = totalWeight > 0 ? (weightedSum / totalWeight) : 0;
+const final_score = Number(
+  (weighted_sum / total_weight).toFixed(2)
+);
 
-// =========================
-// CLASSIFICAÇÃO
-// =========================
+/**
+ * Classificação final
+ */
+let risk_level = 'Baixo';
+let recommendation = 'Homologado';
 
-let classification = "Rejeitado";
-if (finalScore >= 4.0) classification = "Homologado";
-else if (finalScore >= 3.0) classification = "Aguardando Ajustes";
+if (final_score >= 4) {
+  risk_level = 'Alto';
+  recommendation = 'Não Homologado';
+} else if (final_score >= 2.5) {
+  risk_level = 'Médio';
+  recommendation = 'Homologado com Ressalvas';
+}
 
-// =========================
-// DEBUG
-// =========================
-
-rawData.debug_score = {
-  inputs_normalized: {
-    criticality,
-    hosting,
-    internetExposed,
-    personalData,
-    mfa,
-    sso,
-    rbac,
-    audit
-  },
+/**
+ * Dados de debug
+ * Auxilia troubleshooting durante evolução da automação
+ */
+const debug_score = {
+  normalized,
   scores,
-  weights: weightProfile,
-  weightedSum,
-  totalWeight
+  weights,
+  weighted_sum,
+  total_weight,
+  final_score
 };
 
-// =========================
-// OUTPUT
-// =========================
+return [{
+  ...raw,
 
-rawData.risk_score = Number(finalScore.toFixed(2));
-rawData.risk_classification = classification;
+  normalized,
 
-return [
-  { json: rawData }
-];
+  analysis: {
+    risk_score: final_score,
+    risk_level,
+    recommendation
+  },
+
+  debug_score
+}];
