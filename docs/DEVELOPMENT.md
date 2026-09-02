@@ -6,7 +6,7 @@ manual, uma linha normalizada, um score de risco ponderado (Probabilidade x Impa
 técnico em Google Doc, um por submissão.
 
 > **Status**: lógica core (normalização, score, parecer) reescrita e validada de ponta a ponta contra
-> o formulário real (PR #1, mesclado). Ambiente ainda é uma VM de desenvolvimento local - a KaBuM! vai
+> o formulário real (PR #1, mesclado). Ambiente ainda é uma VM de desenvolvimento local - a empresa vai
 > disponibilizar um ambiente STG na nuvem corporativa mais adiante, o que muda o modelo de rede hoje
 > (n8n só acessível via SSH tunnel, sem exposição direta).
 
@@ -65,7 +65,7 @@ por design, até o ambiente STG resolver a questão de rede corporativa.
 
 **Todos os IDs hardcoded neste repositório (planilha, perguntas do formulário, template do Doc, pasta
 do Drive, credenciais OAuth) são específicos deste ambiente de desenvolvimento, não permanentes.**
-Numa migração futura pro ambiente STG da KaBuM! (VM local → nuvem corporativa), espera-se que a maioria
+Numa migração futura pro ambiente STG da empresa (VM local → nuvem corporativa), espera-se que a maioria
 mude - especialmente se o Form for recriado em vez de só copiado (todo item ganha um ID interno novo).
 Não tratar nenhum desses valores como fixo sem confirmar que o ambiente não mudou desde a última vez.
 
