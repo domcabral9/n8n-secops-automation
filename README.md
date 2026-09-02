@@ -1,264 +1,128 @@
 # n8n-secops-automation
 
-## 📌 Visão Geral
+Automação real (não um exercício hipotético) de homologação de risco de software: um Google Forms
+que qualquer área da empresa usa pra pedir a adoção de um novo software vira, sem trabalho manual, um
+parecer técnico completo, um por submissão. Construído sozinho por um analista de Segurança da
+Informação, ainda em ambiente de desenvolvimento (a adoção oficial depende de infraestrutura que a
+empresa ainda vai disponibilizar), projeto irmão do [`morpheus-beta`](https://github.com/domcabral9/morpheus-beta)
+(mesmo problema de risco-homologação, stack e contexto completamente diferentes: aqui é n8n Community +
+Google Workspace sobre um processo corporativo já em uso, lá é uma plataforma full-stack construída do
+zero como projeto educacional).
 
-Este projeto implementa um **motor de avaliação de risco contextual para softwares**, utilizando **n8n Community** integrado ao Google Forms e Google Sheets.
+## O que o projeto faz
 
-Diferente de abordagens tradicionais baseadas em checklist, esta solução evolui para um modelo de análise **orientado a contexto, impacto e controles de segurança**, aproximando-se de práticas reais utilizadas em ambientes corporativos.
+1. Recebe a submissão de um formulário real de homologação (27 perguntas: identificação do software,
+   licenciamento, responsabilidade, infraestrutura, controle de acesso, integrações, tratamento de
+   dados).
+2. Normaliza cada resposta pelo **ID interno da pergunta**, não pelo texto - sobrevive a uma pergunta
+   ser reescrita, e detecta sozinho quando o mapeamento fica desatualizado (`mapping_status`) em vez de
+   quebrar silenciosamente.
+3. Calcula um score de risco (0-5) numa matriz **Probabilidade x Impacto**, com peso e dimensão
+   configurados por critério de segurança.
+4. Gera um parecer técnico completo - inclusive as observações são calculadas a partir da contribuição
+   real de cada critério pra aquela submissão específica, não texto fixo repetido em todo parecer - num
+   Google Doc novo por submissão, copiado de um template, com o link registrado de volta na planilha.
 
----
+## O problema que resolve
 
-## 🎯 Objetivo
+A versão anterior deste processo dependia de alguém copiar e colar manualmente as respostas do
+formulário pra uma aba com nomes de coluna padronizados, toda vez que alguém editava uma pergunta do
+Forms - porque o Google Forms reescreve o cabeçalho da aba de respostas com o texto completo da
+pergunta a cada edição, desfazendo esse trabalho manual sem avisar ninguém. O motor de risco continuava
+rodando normalmente, só que contra dados vazios, produzindo um parecer errado de forma silenciosa.
 
-* Automatizar a avaliação inicial de softwares
-* Reduzir esforço manual e inconsistências
-* Padronizar critérios de análise de risco
-* Gerar parecer técnico estruturado e auditável
-* Suportar decisões de homologação com base em risco real
+A correção não foi só automatizar esse copy-paste: foi eliminar a dependência do texto da pergunta por
+completo, lendo pelo ID interno de cada item do formulário (estável mesmo se a pergunta for reescrita),
+com um mecanismo que detecta e sinaliza qualquer desvio de mapeamento na primeira submissão seguinte -
+ver [`docs/architecture.md`](./docs/architecture.md) pro raciocínio completo.
 
----
+## Metodologia do motor de risco
 
-## 🧠 Problema Resolvido
+Mesma abordagem clássica de avaliação de risco usada no [`morpheus-beta`](https://github.com/domcabral9/morpheus-beta)
+- probabilidade x impacto, alinhada com frameworks como o NIST SP 800-30: cada critério de segurança
+(MFA, SSO, exposição à internet, controle de acesso, auditoria, criticidade do negócio, dados pessoais)
+contribui, com peso próprio, pra uma das duas dimensões - **Probabilidade** (o quanto ele afeta a chance
+de um incidente acontecer) ou **Impacto** (o quanto ele afeta a gravidade se acontecer) - e o resultado
+final é classificado contra faixas de decisão (Homologado / Homologado com Ressalvas / Não Homologado).
 
-Processos tradicionais de avaliação apresentam:
+Isso resolve um caso de borda real encontrado na validação: sem separar as duas dimensões, um software
+crítico e exposto à internet, mas com todos os controles de segurança presentes, podia sair classificado
+como risco baixo sem nenhuma ressalva - a única média ponderada permitia que bons controles "compensassem"
+uma criticidade/exposição alta demais. Com a separação, o mesmo perfil corretamente sai como Homologado
+com Ressalvas.
 
-* Falta de padronização
-* Avaliações subjetivas
-* Baixa rastreabilidade
-* Dependência excessiva de análise manual
-* Uso de checklists que ignoram contexto
+## Evidência real
 
-Este projeto resolve esses pontos com um motor de decisão que considera:
+| Canvas do workflow (execução bem-sucedida) |
+| --- |
+| ![Canvas do n8n](./docs/images/n8n-canvas-execucao.jpg) |
 
-* Tipo de aplicação (SaaS, On-premise, Cloud)
-* Sensibilidade dos dados
-* Exposição
-* Controles de segurança implementados
+Parecer gerado por uma submissão de teste real (nome fictício, dado de contato genérico de propósito -
+ver [`docs/demo-data-checklist.md`](./docs/demo-data-checklist.md)):
 
----
+```
+PARECER TÉCNICO DE AVALIAÇÃO DE SOFTWARE
 
-## 🏗️ Arquitetura
+Aplicação: Higgsfield AI
+Criticidade: Média
+Modelo de hospedagem: SaaS
 
-Fluxo da automação:
+Score final (0-5, maior = mais seguro): 3.35
+Classificação: Homologado com Ressalvas
 
-Google Forms
-↓
-Google Sheets
-↓
-n8n (Trigger)
-↓
-Normalização de Dados
-↓
-Motor de Risco Contextual
-↓
-Geração de Parecer Técnico
-↓
-Persistência (Sheets)
+Probabilidade de ocorrência: Média (2.22)
+Impacto potencial: Baixo (4.27)
 
----
+Principais fatores desta avaliação:
+Aplicação exposta à internet, aumentando a superfície de ataque. Ausência de autenticação
+centralizada (SSO).
 
-## ⚙️ Tecnologias Utilizadas
+Pontos positivos:
+- Aplicação utiliza autenticação multifator (MFA).
+- Aplicação possui controle de acesso baseado em papéis (RBAC).
+- Aplicação mantém trilhas de auditoria (logging).
+- Não há indicação de tratamento de dados pessoais.
 
-* n8n Community
-* Google Forms
-* Google Sheets API
-* Google Cloud (OAuth2)
-* JavaScript (Function Nodes)
+Pontos de atenção:
+- Aplicação exposta à internet, aumentando a superfície de ataque.
+- Ausência de autenticação centralizada (SSO).
 
----
-
-## 🔄 Estrutura do Workflow
-
-| Etapa           | Descrição                                         |
-| --------------- | ------------------------------------------------- |
-| Normalização    | Padroniza e corrige inconsistências de input      |
-| Classificação   | Identifica criticidade e contexto da aplicação    |
-| Motor de Risco  | Calcula score ponderado (1–5) baseado em contexto |
-| Decisão Técnica | Gera parecer técnico automatizado                 |
-| Persistência    | Atualiza planilha com resultado                   |
-
----
-
-## 🧠 Evolução do Motor de Risco
-
-### 🔹 Versão inicial
-
-Baseada em soma de pontos fixos:
-
-* * risco por ausência de controles
-* Sem distinção de contexto
-
-Limitações:
-
-* Penalização indevida de aplicações simples
-* Falta de precisão na análise
-
----
-
-### 🔹 Versão atual (Context-Aware Risk Engine)
-
-O modelo evoluiu para considerar:
-
-#### 1. Contexto da aplicação
-
-* SaaS vs On-premise vs Cloud
-* Exposição esperada vs risco real
-
-#### 2. Sensibilidade dos dados
-
-* Dados pessoais não são automaticamente risco
-* Risco depende da presença de controles
-
-#### 3. Controles de segurança
-
-* MFA
-* SSO (apenas quando relevante)
-* RBAC
-* Logging
-
-#### 4. Avaliação combinada
-
-Exemplo:
-
-* Dados pessoais + MFA + RBAC → risco controlado
-* Dados pessoais sem controles → risco alto
-
----
-
-## ⚖️ Lógica de Avaliação (Resumo)
-
-O score final varia de **1 a 5**:
-
-| Score     | Classificação      | Interpretação    |
-| --------- | ------------------ | ---------------- |
-| 4.0 – 5.0 | Homologado         | Seguro para uso  |
-| 3.0 – 3.9 | Aguardando Ajustes | Requer melhorias |
-| < 3.0     | Rejeitado          | Risco elevado    |
-
----
-
-## 🧩 Principais Regras Inteligentes
-
-### ✔ SSO contextual
-
-* Não penaliza aplicações sem necessidade de autenticação
-* Relevante apenas para SaaS ou sistemas com dados sensíveis
-
----
-
-### ✔ Exposição inteligente
-
-* SaaS exposto → comportamento esperado
-* Penalização ocorre apenas sem controles adequados
-
----
-
-### ✔ Dados pessoais com análise de proteção
-
-* Não penaliza automaticamente
-* Avalia presença de:
-
-  * MFA
-  * RBAC
-  * Logging
-
----
-
-### ✔ Tri-state evaluation
-
-Valores suportados:
-
-* Sim
-* Não
-* Não sei (tratado como neutro)
-
----
-
-## 📄 Exemplo de Saída
-
-```json
-{
-  "app_name": "Sistema Exemplo",
-  "risk_score": 4.1,
-  "risk_classification": "Homologado",
-  "technical_opinion": "Aplicação com baixo risco e controles adequados."
-}
+Recomendação:
+A aplicação pode ser homologada mediante avaliação complementar e aceite dos riscos identificados.
 ```
 
----
+O parecer completo (gerado no Google Doc real) inclui também uma seção com todas as 27 respostas do
+formulário agrupadas por categoria - não só o subconjunto usado no cálculo de risco acima.
 
-## 📂 Estrutura do Repositório
+## Arquitetura
 
-```bash
-.
-├── workflows/
-├── nodes/
-├── examples/
-├── docs/
-└── README.md
+Diagrama completo do pipeline (formulário → normalização → score → parecer) em
+[`docs/architecture.md`](./docs/architecture.md). Documentação de cada script/node em
+[`docs/nodes.md`](./docs/nodes.md).
+
+## Stack
+
+n8n Community Edition (self-hosted, Docker), Google Forms/Sheets/Docs/Drive, Google Apps Script.
+Detalhes completos, estrutura do repositório e como acessar o ambiente em
+[`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md).
+
+## Estrutura do repositório
+
+```
+n8n-secops-automation/
+├── apps-script/     # normalização por ID de pergunta, bound ao Form
+├── nodes/           # Code nodes do n8n (motor de score, geração de parecer)
+├── workflows/       # workflow completo, exportado da instância real
+└── docs/
 ```
 
-### nodes/
+## Status
 
-* normalization → padronização de dados
-* classification → definição de criticidade
-* risk → motor de score contextual
-* decision → geração de parecer técnico
+Lógica core (normalização, score, parecer) reescrita e validada de ponta a ponta contra o formulário
+real, incluindo o caminho totalmente automático (submissão real → parecer gerado, sem clique manual).
+Ambiente ainda é uma VM de desenvolvimento local - próximo marco de infraestrutura depende da empresa
+disponibilizar um ambiente de homologação na nuvem corporativa.
 
----
+## Contato
 
-## 🚀 Como Utilizar
-
-1. Criar formulário no Google Forms
-2. Integrar com Google Sheets
-3. Configurar OAuth no Google Cloud
-4. Importar workflow no n8n
-5. Configurar credenciais
-6. Ativar automação
-
----
-
-## 🔐 Considerações de Segurança
-
-* Uso de OAuth2
-* Separação entre coleta e processamento
-* Estrutura preparada para integração com GRC
-* Possibilidade de auditoria via logs e histórico
-
----
-
-## 📈 Evoluções Futuras
-
-* Score por domínio (Identidade, Dados, Infraestrutura)
-* Justificativa automática baseada no score
-* Integração com sistemas de ticket (Jira, ServiceNow)
-* Dashboard de risco
-* Exportação de parecer em PDF
-* Integração com SIEM/GRC
-
----
-
-## 📌 Status do Projeto
-
-Versão atual:
-
-✔ Motor de risco contextual implementado
-✔ Integração com Google Forms/Sheets
-✔ Score ponderado funcional
-✔ Geração de parecer técnico
-
----
-
-## 🤝 Contribuição
-
-Projeto voltado para estudos e evolução prática em:
-
-* SecOps
-* GRC
-* Automação de segurança
-
----
-
-## 📬 Contato
-
-([domcabral@proton.me](mailto:domcabral@proton.me))
+[domcabral@proton.me](mailto:domcabral@proton.me)
