@@ -12,11 +12,14 @@ const data = $json;
 const normalized = data.normalized || {};
 const analysis = data.analysis || {};
 const debug = data.debug_score || {};
-const scores = debug.scores || {};
-const weights = debug.weights || {};
+
+const criteriaByKey = {};
+(debug.criteria || []).forEach((c) => {
+  criteriaByKey[c.key] = c;
+});
 
 /**
- * Cada critério com sua contribuição real pro score final (peso × pontuação
+ * Cada critério com sua contribuição real pro score final (peso × risco
  * individual, já calculados pelo Gerador de Score) - usado pra ranquear os
  * fatores que mais pesaram nesta submissão específica, em vez de textos
  * fixos repetidos em todo parecer. `positive` é o sentido em que o critério
@@ -62,10 +65,10 @@ const CRITERIA = [
   }
 ];
 
-const ranked = CRITERIA.map((c) => ({
-  ...c,
-  contribution: (weights[c.key] || 0) * (scores[c.key] || 0)
-})).sort((a, b) => b.contribution - a.contribution);
+const ranked = CRITERIA.map((c) => {
+  const info = criteriaByKey[c.key] || { weight: 0, risk: 0 };
+  return { ...c, contribution: info.weight * info.risk };
+}).sort((a, b) => b.contribution - a.contribution);
 
 const pontos_positivos = [];
 const pontos_atencao = [];
@@ -121,8 +124,11 @@ Aplicação: ${normalized.app_name}
 Criticidade: ${normalized.criticality}
 Modelo de hospedagem: ${normalized.hosting}
 
-Score final (1-5): ${analysis.risk_score}
+Score final (0-5, maior = mais seguro): ${analysis.risk_score}
 Classificação: ${analysis.recommendation}
+
+Probabilidade de ocorrência: ${analysis.probability_level} (${analysis.probability_score})
+Impacto potencial: ${analysis.impact_level} (${analysis.impact_score})
 
 Principais fatores desta avaliação:
 ${principaisFatores}
@@ -175,5 +181,10 @@ return [{
 
   risk_score: analysis.risk_score,
   risk_level: analysis.risk_level,
-  recommendation: analysis.recommendation
+  recommendation: analysis.recommendation,
+
+  probability_score: analysis.probability_score,
+  probability_level: analysis.probability_level,
+  impact_score: analysis.impact_score,
+  impact_level: analysis.impact_level
 }];
