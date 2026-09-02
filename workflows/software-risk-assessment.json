@@ -1,11 +1,11 @@
 [
   {
-    "updatedAt": "2026-05-17T20:51:00.455Z",
+    "updatedAt": "2026-09-02T19:13:12.745Z",
     "createdAt": "2026-03-15T21:24:39.688Z",
     "id": "q99KAxITafVpcuzM",
     "name": "Software Risk Assessment",
     "description": null,
-    "active": false,
+    "active": true,
     "isArchived": false,
     "nodes": [
       {
@@ -51,8 +51,6 @@
       },
       {
         "parameters": {
-          "mode": "manual",
-          "duplicateItem": false,
           "assignments": {
             "assignments": []
           },
@@ -185,7 +183,7 @@
               {
                 "action": "replaceAll",
                 "text": "{{analysis_status}}",
-                "replaceText": "={{$json.analysis_status}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.analysis_status }}"
               },
               {
                 "action": "replaceAll",
@@ -195,97 +193,97 @@
               {
                 "action": "replaceAll",
                 "text": "{{app_name}}",
-                "replaceText": "={{$json.app_name}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.app_name }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{app_version}}",
-                "replaceText": "={{$json.app_version}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.app_version }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{app_category}}",
-                "replaceText": "={{$json.app_category}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.app_category }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{app_purpose}}",
-                "replaceText": "={{$json.app_purpose}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.app_purpose }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{lic_model}}",
-                "replaceText": "={{$json.lic_model}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.lic_model }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{resp_manager_area}}",
-                "replaceText": "={{$json.resp_manager_area}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.resp_manager_area }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{res_manager_area}}",
-                "replaceText": "={{$json.resp_manager_area}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.resp_manager_area }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{resp_owner_name}}",
-                "replaceText": "={{$json.resp_owner_name}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.resp_owner_name }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{resp_owner_contact}}",
-                "replaceText": "={{$json.resp_owner_contact}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.resp_owner_contact }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{sec_mfa}}",
-                "replaceText": "={{$json.sec_mfa}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.sec_mfa }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{sec_sso}}",
-                "replaceText": "={{$json.sec_sso}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.sec_sso }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{infra_internet_exposed}}",
-                "replaceText": "={{$json.infra_internet_exposed}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.infra_internet_exposed }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{sec_audit_logging}}",
-                "replaceText": "={{$json.sec_audit_logging}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.sec_audit_logging }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{data_personal_type}}",
-                "replaceText": "={{$json.data_personal_type}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.data_personal_type }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{risk_score}}",
-                "replaceText": "={{$json.risk_score}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.risk_score.toString() }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{risk_level}}",
-                "replaceText": "={{$json.risk_level}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.risk_level }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{recommendation}}",
-                "replaceText": "={{$json.recommendation}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.recommendation }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{technical_opinion}}",
-                "replaceText": "={{$json.technical_opinion}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.technical_opinion }}"
               },
               {
                 "action": "replaceAll",
                 "text": "{{respostas_completas}}",
-                "replaceText": "={{$json.full_answers_text}}"
+                "replaceText": "={{ $('Decisão Técnica').item.json.full_answers_text }}"
               }
             ]
           }
@@ -307,7 +305,6 @@
       },
       {
         "parameters": {
-          "resource": "file",
           "operation": "copy",
           "fileId": {
             "__rl": true,
@@ -372,22 +369,315 @@
               {
                 "id": "form_timestamp",
                 "displayName": "form_timestamp",
-                "type": "string",
-                "canBeUsedToMatch": true,
                 "required": false,
                 "defaultMatch": false,
-                "display": true
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "form_email",
+                "displayName": "form_email",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "mapping_status",
+                "displayName": "mapping_status",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_name",
+                "displayName": "app_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_version",
+                "displayName": "app_version",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_category",
+                "displayName": "app_category",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_purpose",
+                "displayName": "app_purpose",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_criticality",
+                "displayName": "app_criticality",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "lic_model",
+                "displayName": "lic_model",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "fin_billing_model",
+                "displayName": "fin_billing_model",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_source",
+                "displayName": "app_source",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "resp_manager_area",
+                "displayName": "resp_manager_area",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "resp_owner_name",
+                "displayName": "resp_owner_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "resp_owner_contact",
+                "displayName": "resp_owner_contact",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "infra_hosting",
+                "displayName": "infra_hosting",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "infra_internet_exposed",
+                "displayName": "infra_internet_exposed",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_mfa",
+                "displayName": "sec_mfa",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_mfa_method",
+                "displayName": "sec_mfa_method",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_sso",
+                "displayName": "sec_sso",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_sso_method",
+                "displayName": "sec_sso_method",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "access_method",
+                "displayName": "access_method",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_role_based_access",
+                "displayName": "sec_role_based_access",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_audit_logging",
+                "displayName": "sec_audit_logging",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_integrations",
+                "displayName": "app_integrations",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_integrations_details",
+                "displayName": "app_integrations_details",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "data_personal_data",
+                "displayName": "data_personal_data",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "data_personal_type",
+                "displayName": "data_personal_type",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "data_file_storage",
+                "displayName": "data_file_storage",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_notes",
+                "displayName": "app_notes",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "full_answers_json",
+                "displayName": "full_answers_json",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
               },
               {
                 "id": "parecer_doc_url",
                 "displayName": "parecer_doc_url",
-                "type": "string",
-                "canBeUsedToMatch": true,
                 "required": false,
                 "defaultMatch": false,
-                "display": true
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
               }
-            ]
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
           },
           "options": {}
         },
@@ -520,15 +810,21 @@
       "binaryMode": "separate",
       "availableInMCP": false
     },
-    "staticData": null,
+    "staticData": {
+      "node:Google Sheets Trigger": {
+        "documentId": "<SPREADSHEET_ID>",
+        "sheetId": 1333426654,
+        "lastIndexChecked": 5
+      }
+    },
     "meta": {
       "templateCredsSetupCompleted": true
     },
     "pinData": {},
-    "versionId": "3ce5ddd4-007d-4b0e-9e82-5eb0f5d19647",
-    "activeVersionId": null,
-    "versionCounter": 405,
-    "triggerCount": 0,
+    "versionId": "a030c616-4f5e-4aa3-9ba4-1209b48f8b8a",
+    "activeVersionId": "abde2ad6-4996-4047-a21f-4fb8f5417ad2",
+    "versionCounter": 414,
+    "triggerCount": 1,
     "tags": [],
     "shared": [
       {
