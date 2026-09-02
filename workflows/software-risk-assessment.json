@@ -1,0 +1,873 @@
+[
+  {
+    "updatedAt": "2026-09-02T20:41:23.000Z",
+    "createdAt": "2026-03-15T21:24:39.688Z",
+    "id": "q99KAxITafVpcuzM",
+    "name": "Software Risk Assessment",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "documentId": {
+            "__rl": true,
+            "value": "1Bvetmye_KkGCagWYokQGeuEtKkyARzurDpcoF17oBNg",
+            "mode": "list",
+            "cachedResultName": "(n8n) SecOps- Softwares Homologados (Responses)",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bvetmye_KkGCagWYokQGeuEtKkyARzurDpcoF17oBNg/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1333426654,
+            "mode": "list",
+            "cachedResultName": "Normalizado",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bvetmye_KkGCagWYokQGeuEtKkyARzurDpcoF17oBNg/edit#gid=1333426654"
+          },
+          "event": "rowAdded",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheetsTrigger",
+        "typeVersion": 1,
+        "position": [
+          -592,
+          0
+        ],
+        "id": "fa3e00a2-7dbd-483b-ad32-e614f9b2f8ae",
+        "name": "Google Sheets Trigger",
+        "credentials": {
+          "googleSheetsTriggerOAuth2Api": {
+            "id": "4kfBaUMA6CN5xbHE",
+            "name": "Google Sheets Trigger account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": []
+          },
+          "includeOtherFields": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -368,
+          0
+        ],
+        "id": "654a61db-0d22-4811-8a7f-2f8163cf849d",
+        "name": "Normalização"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "9e023dcc-a740-4505-bfe9-ff3889fb0249",
+                "leftValue": "={{$json.app_criticality}}",
+                "rightValue": "Crítica",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals",
+                  "name": "filter.operator.equals"
+                }
+              }
+            ],
+            "combinator": "or"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -144,
+          0
+        ],
+        "id": "b341e568-e8f0-4ee7-aa92-e0b9da06cd6e",
+        "name": "Condição Critica"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "a8b3af2a-98fd-477f-8aad-75ba728258e8",
+                "name": "risk_flag",
+                "value": "CRITICAL_APPLICATION",
+                "type": "string"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          80,
+          -96
+        ],
+        "id": "99fd18bb-5d67-4683-a171-5fef60361639",
+        "name": "App Critico"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "fc0b2d64-d557-4dd6-a7f6-77e9514e5089",
+                "name": "risk_flag",
+                "value": "STANDARD_APPLICATION",
+                "type": "string"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          80,
+          96
+        ],
+        "id": "1a4a6a09-1732-4e63-998f-71a2e50267ec",
+        "name": "App Padrão"
+      },
+      {
+        "parameters": {
+          "jsCode": "/**\n * Node: Gerador de Score\n * Workflow: Software Risk Assessment\n *\n * Calcula Probabilidade, Impacto e o score final (0-5, maior = mais seguro) a\n * partir dos campos ja normalizados pelo Apps Script (ver\n * apps-script/normalizacao.gs) e repassados pelo node \"Normalizacao\" do n8n.\n * Nao deve receber nem tratar nomes de campo alternativos - o contrato de\n * entrada e fixo.\n *\n * Segue o mesmo padrao do risk-engine.service.ts do morpheus-beta: cada\n * criterio tem peso (importancia) e dimensao (PROBABILITY ou IMPACT), o motor\n * calcula uma media ponderada de risco por dimensao (0=seguro, 5=risco\n * maximo) e inverte (5 - risco) pra um score de seguranca. Probabilidade e\n * Impacto sao so diagnostico - nao ha regra de piso cruzando as duas; a\n * classificacao final vem de uma faixa unica sobre o score total, igual ao\n * morpheus-beta em runtime (a grade Probabilidade x Impacto la e so visual).\n */\n\nconst raw = $json;\n\n/**\n * As 6 perguntas booleanas do formulario sao hoje um radio fechado\n * Sim/Nao/Nao sei informar - \"sim\" e o unico valor tratado como verdadeiro,\n * \"nao sei informar\" e tratado como neutro (mesmo caminho que \"nao\").\n */\nfunction normalizeBoolean(value) {\n  if (typeof value !== 'string') return false;\n  return value.trim().toLowerCase() === 'sim';\n}\n\nfunction criticalityRisk(value) {\n  switch ((value || '').toLowerCase()) {\n    case 'crítica':\n      return 5;\n    case 'alta':\n      return 4;\n    case 'média':\n      return 2;\n    case 'baixa':\n      return 0;\n    default:\n      // Dado ausente/inesperado: assume risco moderado-alto, nao baixo -\n      // na duvida trata como mais arriscado, nunca mais seguro.\n      return 3;\n  }\n}\n\nconst normalized = {\n  app_name: raw.app_name || 'Não informado',\n  criticality: raw.app_criticality || 'Não informado',\n  hosting: raw.infra_hosting || 'Não informado',\n  internet_exposed: normalizeBoolean(raw.infra_internet_exposed),\n  personal_data: normalizeBoolean(raw.data_personal_data),\n  mfa: normalizeBoolean(raw.sec_mfa),\n  sso: normalizeBoolean(raw.sec_sso),\n  rbac: normalizeBoolean(raw.sec_role_based_access),\n  audit: normalizeBoolean(raw.sec_audit_logging)\n};\n\n/**\n * Fonte unica de verdade de peso + dimensao por criterio. `risk` e sempre\n * 0 (seguro) a 5 (risco maximo) - a importancia relativa vive so no peso,\n * nao mais tambem num teto de escala diferente por criterio.\n *\n * PROBABILITY = afeta a chance de um incidente ocorrer (autenticacao,\n * exposicao). IMPACT = afeta a gravidade se ocorrer (criticidade do\n * negocio, dados pessoais, blast radius, capacidade de resposta) - RBAC e\n * Auditoria entram como IMPACT porque nao mudam a chance de comprometimento,\n * só o tamanho do estrago e a velocidade de deteccao/resposta depois dele.\n */\nconst RISK_CRITERIA = [\n  { key: 'criticality', weight: 2.0, dimension: 'IMPACT', risk: criticalityRisk(normalized.criticality) },\n  { key: 'mfa', weight: 2.0, dimension: 'PROBABILITY', risk: normalized.mfa ? 0 : 5 },\n  { key: 'internet_exposed', weight: 1.5, dimension: 'PROBABILITY', risk: normalized.internet_exposed ? 5 : 0 },\n  { key: 'personal_data', weight: 1.5, dimension: 'IMPACT', risk: normalized.personal_data ? 5 : 0 },\n  { key: 'sso', weight: 1.0, dimension: 'PROBABILITY', risk: normalized.sso ? 0 : 5 },\n  { key: 'rbac', weight: 1.0, dimension: 'IMPACT', risk: normalized.rbac ? 0 : 5 },\n  { key: 'audit', weight: 1.0, dimension: 'IMPACT', risk: normalized.audit ? 0 : 5 }\n];\n\nconst PROBABILITY_LEVELS = [\n  { id: 'Alta', min: 0, max: 1.66 },\n  { id: 'Média', min: 1.67, max: 3.33 },\n  { id: 'Baixa', min: 3.34, max: 5 }\n];\nconst IMPACT_LEVELS = [\n  { id: 'Alto', min: 0, max: 1.66 },\n  { id: 'Médio', min: 1.67, max: 3.33 },\n  { id: 'Baixo', min: 3.34, max: 5 }\n];\n// Faixas de classificacao final - valores reaproveitados literalmente do\n// classificationDefs do morpheus-beta (mesma escala 0-5).\nconst CLASSIFICATIONS = [\n  { id: 'Não Homologado', min: 0, max: 2.99 },\n  { id: 'Homologado com Ressalvas', min: 3.0, max: 3.99 },\n  { id: 'Homologado', min: 4.0, max: 5 }\n];\n\nfunction clamp(value, min, max) {\n  return Math.min(max, Math.max(min, value));\n}\n\nfunction weightedAverageRisk(items) {\n  const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);\n  if (totalWeight === 0) return 0;\n  const weightedSum = items.reduce((sum, item) => sum + item.risk * item.weight, 0);\n  return weightedSum / totalWeight;\n}\n\nfunction findLevel(bands, score) {\n  return bands.find((band) => score >= band.min && score <= band.max) || bands[bands.length - 1];\n}\n\nconst probabilityItems = RISK_CRITERIA.filter((c) => c.dimension === 'PROBABILITY');\nconst impactItems = RISK_CRITERIA.filter((c) => c.dimension === 'IMPACT');\n\nconst probability_risk = weightedAverageRisk(probabilityItems);\nconst impact_risk = weightedAverageRisk(impactItems);\nconst total_risk = weightedAverageRisk(RISK_CRITERIA);\n\nconst probability_score = Number(clamp(5 - probability_risk, 0, 5).toFixed(2));\nconst impact_score = Number(clamp(5 - impact_risk, 0, 5).toFixed(2));\nconst risk_score = Number(clamp(5 - total_risk, 0, 5).toFixed(2));\n\nconst probability_level = findLevel(PROBABILITY_LEVELS, probability_score).id;\nconst impact_level = findLevel(IMPACT_LEVELS, impact_score).id;\nconst recommendation = findLevel(CLASSIFICATIONS, risk_score).id;\n\nlet risk_level;\nswitch (recommendation) {\n  case 'Não Homologado':\n    risk_level = 'Alto';\n    break;\n  case 'Homologado com Ressalvas':\n    risk_level = 'Médio';\n    break;\n  default:\n    risk_level = 'Baixo';\n}\n\nconst debug_score = {\n  normalized,\n  criteria: RISK_CRITERIA,\n  probability_risk,\n  impact_risk,\n  total_risk\n};\n\nreturn [{\n  ...raw,\n\n  normalized,\n\n  analysis: {\n    risk_score,\n    risk_level,\n    recommendation,\n    probability_score,\n    probability_level,\n    impact_score,\n    impact_level\n  },\n\n  debug_score\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          304,
+          0
+        ],
+        "id": "2f5fa851-d1c8-4724-87c3-1719af07889c",
+        "name": "Gerador de Score"
+      },
+      {
+        "parameters": {
+          "jsCode": "/**\n * Node: Decisão Técnica\n * Workflow: Software Risk Assessment\n *\n * Consome os dados já normalizados e pontuados pelo \"Gerador de Score\" e\n * monta o parecer técnico. Não recalcula score nem realiza normalização\n * adicional - qualquer critério novo entra no \"Gerador de Score\" primeiro.\n */\n\nconst data = $json;\n\nconst normalized = data.normalized || {};\nconst analysis = data.analysis || {};\nconst debug = data.debug_score || {};\n\nconst criteriaByKey = {};\n(debug.criteria || []).forEach((c) => {\n  criteriaByKey[c.key] = c;\n});\n\n/**\n * Cada critério com sua contribuição real pro score final (peso × risco\n * individual, já calculados pelo Gerador de Score) - usado pra ranquear os\n * fatores que mais pesaram nesta submissão específica, em vez de textos\n * fixos repetidos em todo parecer. `positive` é o sentido em que o critério\n * reduz risco (ex.: MFA presente, exposição ausente).\n */\nconst CRITERIA = [\n  {\n    key: 'mfa',\n    positive: normalized.mfa,\n    positiveText: 'Aplicação utiliza autenticação multifator (MFA).',\n    negativeText: 'Ausência de autenticação multifator (MFA).',\n    critical: true\n  },\n  {\n    key: 'sso',\n    positive: normalized.sso,\n    positiveText: 'Aplicação integrada a autenticação centralizada (SSO).',\n    negativeText: 'Ausência de autenticação centralizada (SSO).'\n  },\n  {\n    key: 'rbac',\n    positive: normalized.rbac,\n    positiveText: 'Aplicação possui controle de acesso baseado em papéis (RBAC).',\n    negativeText: 'Controle de acesso baseado em papéis (RBAC) não identificado.'\n  },\n  {\n    key: 'audit',\n    positive: normalized.audit,\n    positiveText: 'Aplicação mantém trilhas de auditoria (logging).',\n    negativeText: 'Ausência de trilhas de auditoria (logging). Possível dificuldade em investigações.'\n  },\n  {\n    key: 'internet_exposed',\n    positive: !normalized.internet_exposed,\n    positiveText: 'Aplicação sem exposição direta à internet.',\n    negativeText: 'Aplicação exposta à internet, aumentando a superfície de ataque.'\n  },\n  {\n    key: 'personal_data',\n    positive: !normalized.personal_data,\n    positiveText: 'Não há indicação de tratamento de dados pessoais.',\n    negativeText: 'Aplicação realiza processamento ou armazenamento de dados pessoais.'\n  }\n];\n\nconst ranked = CRITERIA.map((c) => {\n  const info = criteriaByKey[c.key] || { weight: 0, risk: 0 };\n  return { ...c, contribution: info.weight * info.risk };\n}).sort((a, b) => b.contribution - a.contribution);\n\nconst pontos_positivos = [];\nconst pontos_atencao = [];\nconst riscos_criticos = [];\n\nranked.forEach((c) => {\n  if (c.positive) {\n    pontos_positivos.push(c.positiveText);\n  } else if (c.critical) {\n    riscos_criticos.push(c.negativeText);\n  } else {\n    pontos_atencao.push(c.negativeText);\n  }\n});\n\nconst topRiscos = ranked.filter((c) => !c.positive);\nconst principaisFatores = topRiscos.length > 0\n  ? topRiscos.slice(0, 2).map((c) => c.negativeText).join(' ')\n  : 'Nenhum fator de risco relevante identificado nos critérios avaliados.';\n\n/**\n * Todas as respostas do formulário, agrupadas por seção (gerado pelo\n * Apps Script em full_answers_json) - garante que nenhuma resposta coletada\n * fica de fora do parecer, mesmo a que não entra no cálculo de risco.\n */\nfunction buildFullAnswersText(json) {\n  if (!json) return '';\n\n  let sections;\n  try {\n    sections = JSON.parse(json);\n  } catch (error) {\n    return '';\n  }\n\n  return sections\n    .filter((section) => section.answers && section.answers.length > 0)\n    .map((section) => {\n      const lines = section.answers\n        .map((a) => `- ${a.question}: ${a.answer}`)\n        .join('\\n');\n      return `${section.section}\\n${lines}`;\n    })\n    .join('\\n\\n');\n}\n\nconst full_answers_text = buildFullAnswersText(data.full_answers_json);\n\nlet parecer = `\nPARECER TÉCNICO DE AVALIAÇÃO DE SOFTWARE\n\nAplicação: ${normalized.app_name}\nCriticidade: ${normalized.criticality}\nModelo de hospedagem: ${normalized.hosting}\n\nScore final (0-5, maior = mais seguro): ${analysis.risk_score}\nClassificação: ${analysis.recommendation}\n\nProbabilidade de ocorrência: ${analysis.probability_level} (${analysis.probability_score})\nImpacto potencial: ${analysis.impact_level} (${analysis.impact_score})\n\nPrincipais fatores desta avaliação:\n${principaisFatores}\n\nResumo da análise:\n`;\n\nif (pontos_positivos.length > 0) {\n  parecer += `\\nPontos positivos:\\n`;\n  pontos_positivos.forEach((item) => {\n    parecer += `- ${item}\\n`;\n  });\n}\n\nif (pontos_atencao.length > 0) {\n  parecer += `\\nPontos de atenção:\\n`;\n  pontos_atencao.forEach((item) => {\n    parecer += `- ${item}\\n`;\n  });\n}\n\nif (riscos_criticos.length > 0) {\n  parecer += `\\nRiscos críticos:\\n`;\n  riscos_criticos.forEach((item) => {\n    parecer += `- ${item}\\n`;\n  });\n}\n\nparecer += `\\nRecomendação:\\n\\n`;\n\nswitch (analysis.recommendation) {\n  case 'Não Homologado':\n    parecer += 'A aplicação apresenta riscos relevantes de segurança e não deve ser homologada até adequação dos controles identificados.';\n    break;\n\n  case 'Homologado com Ressalvas':\n    parecer += 'A aplicação pode ser homologada mediante avaliação complementar e aceite dos riscos identificados.';\n    break;\n\n  default:\n    parecer += 'A aplicação atende aos critérios mínimos de segurança e pode ser homologada para uso.';\n}\n\nreturn [{\n  ...data,\n\n  technical_opinion: parecer,\n  full_answers_text,\n  analysis_status: 'Concluído',\n\n  risk_score: analysis.risk_score,\n  risk_level: analysis.risk_level,\n  recommendation: analysis.recommendation,\n\n  probability_score: analysis.probability_score,\n  probability_level: analysis.probability_level,\n  impact_score: analysis.impact_score,\n  impact_level: analysis.impact_level\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          528,
+          0
+        ],
+        "id": "075db487-5f0c-4376-aba3-46855694d2e0",
+        "name": "Decisão Técnica"
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "documentURL": "={{ 'https://docs.google.com/document/d/' + $json.id + '/edit' }}",
+          "actionsUi": {
+            "actionFields": [
+              {
+                "action": "replaceAll",
+                "text": "{{analysis_status}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.analysis_status }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{now}}",
+                "replaceText": "={{$now}}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{app_name}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.app_name }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{app_version}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.app_version }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{app_category}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.app_category }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{app_purpose}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.app_purpose }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{lic_model}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.lic_model }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{resp_manager_area}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.resp_manager_area }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{res_manager_area}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.resp_manager_area }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{resp_owner_name}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.resp_owner_name }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{resp_owner_contact}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.resp_owner_contact }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{sec_mfa}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.sec_mfa }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{sec_sso}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.sec_sso }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{infra_internet_exposed}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.infra_internet_exposed }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{sec_audit_logging}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.sec_audit_logging }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{data_personal_type}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.data_personal_type }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{risk_score}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.risk_score.toString() }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{risk_level}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.risk_level }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{recommendation}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.recommendation }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{technical_opinion}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.technical_opinion }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{respostas_completas}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.full_answers_text }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{probability_score}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.probability_score.toString() }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{probability_level}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.probability_level }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{impact_score}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.impact_score.toString() }}"
+              },
+              {
+                "action": "replaceAll",
+                "text": "{{impact_level}}",
+                "replaceText": "={{ $('Decisão Técnica').item.json.impact_level }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.googleDocs",
+        "typeVersion": 2,
+        "position": [
+          976,
+          0
+        ],
+        "id": "f1fc7643-1785-4ddd-ab0c-3172a48d07e7",
+        "name": "Update a document",
+        "credentials": {
+          "googleDocsOAuth2Api": {
+            "id": "3L3QygL5UWaVxyDh",
+            "name": "Google Docs account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "copy",
+          "fileId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1kBFLriYbwMfFPtKodlTBIzIWPPtM3xewIyvFUuixaKE"
+          },
+          "name": "={{ 'Parecer Técnico - ' + $json.app_name + ' - ' + $json.form_timestamp }}",
+          "sameFolder": false,
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive",
+            "cachedResultName": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "158jq-9rx48rCFAUlp99j6PmlvI_HwNar"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          752,
+          0
+        ],
+        "id": "a1b2c3d4-0001-4000-8000-000000000001",
+        "name": "Copiar Template",
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "iV6U8GN9twVhvsEZ",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "appendOrUpdate",
+          "documentId": {
+            "__rl": true,
+            "value": "1Bvetmye_KkGCagWYokQGeuEtKkyARzurDpcoF17oBNg",
+            "mode": "id"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1333426654,
+            "mode": "list",
+            "cachedResultName": "Normalizado",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Bvetmye_KkGCagWYokQGeuEtKkyARzurDpcoF17oBNg/edit#gid=1333426654"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "form_timestamp": "={{ $('Normalização').item.json.form_timestamp }}",
+              "parecer_doc_url": "={{ 'https://docs.google.com/document/d/' + $('Copiar Template').item.json.id + '/edit' }}"
+            },
+            "matchingColumns": [
+              "form_timestamp"
+            ],
+            "schema": [
+              {
+                "id": "form_timestamp",
+                "displayName": "form_timestamp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "form_email",
+                "displayName": "form_email",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "mapping_status",
+                "displayName": "mapping_status",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_name",
+                "displayName": "app_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_version",
+                "displayName": "app_version",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_category",
+                "displayName": "app_category",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_purpose",
+                "displayName": "app_purpose",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_criticality",
+                "displayName": "app_criticality",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "lic_model",
+                "displayName": "lic_model",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "fin_billing_model",
+                "displayName": "fin_billing_model",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_source",
+                "displayName": "app_source",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "resp_manager_area",
+                "displayName": "resp_manager_area",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "resp_owner_name",
+                "displayName": "resp_owner_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "resp_owner_contact",
+                "displayName": "resp_owner_contact",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "infra_hosting",
+                "displayName": "infra_hosting",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "infra_internet_exposed",
+                "displayName": "infra_internet_exposed",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_mfa",
+                "displayName": "sec_mfa",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_mfa_method",
+                "displayName": "sec_mfa_method",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_sso",
+                "displayName": "sec_sso",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_sso_method",
+                "displayName": "sec_sso_method",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "access_method",
+                "displayName": "access_method",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_role_based_access",
+                "displayName": "sec_role_based_access",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "sec_audit_logging",
+                "displayName": "sec_audit_logging",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_integrations",
+                "displayName": "app_integrations",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_integrations_details",
+                "displayName": "app_integrations_details",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "data_personal_data",
+                "displayName": "data_personal_data",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "data_personal_type",
+                "displayName": "data_personal_type",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "data_file_storage",
+                "displayName": "data_file_storage",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "app_notes",
+                "displayName": "app_notes",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "full_answers_json",
+                "displayName": "full_answers_json",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "parecer_doc_url",
+                "displayName": "parecer_doc_url",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          1200,
+          0
+        ],
+        "id": "a1b2c3d4-0002-4000-8000-000000000002",
+        "name": "Registrar Link do Parecer",
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "EvbI1t6mKdGYf93s",
+            "name": "Google Sheets account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Google Sheets Trigger": {
+        "main": [
+          [
+            {
+              "node": "Normalização",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalização": {
+        "main": [
+          [
+            {
+              "node": "Condição Critica",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Condição Critica": {
+        "main": [
+          [
+            {
+              "node": "App Critico",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "App Padrão",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "App Critico": {
+        "main": [
+          [
+            {
+              "node": "Gerador de Score",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "App Padrão": {
+        "main": [
+          [
+            {
+              "node": "Gerador de Score",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gerador de Score": {
+        "main": [
+          [
+            {
+              "node": "Decisão Técnica",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decisão Técnica": {
+        "main": [
+          [
+            {
+              "node": "Copiar Template",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Copiar Template": {
+        "main": [
+          [
+            {
+              "node": "Update a document",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Update a document": {
+        "main": [
+          [
+            {
+              "node": "Registrar Link do Parecer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": {
+      "node:Google Sheets Trigger": {
+        "documentId": "1Bvetmye_KkGCagWYokQGeuEtKkyARzurDpcoF17oBNg",
+        "sheetId": 1333426654,
+        "lastIndexChecked": 5
+      }
+    },
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "pinData": {},
+    "versionId": "f2952344-aaf9-4fc6-851a-687ce2e3c031",
+    "activeVersionId": "f2952344-aaf9-4fc6-851a-687ce2e3c031",
+    "versionCounter": 417,
+    "triggerCount": 1,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-03-15T21:24:39.702Z",
+        "createdAt": "2026-03-15T21:24:39.702Z",
+        "role": "workflow:owner",
+        "workflowId": "q99KAxITafVpcuzM",
+        "projectId": "FbbVb16kkkxtBaz1",
+        "project": {
+          "updatedAt": "2026-02-28T21:30:15.687Z",
+          "createdAt": "2026-02-28T21:19:26.716Z",
+          "id": "FbbVb16kkkxtBaz1",
+          "name": "Dom Cabral <secops@n8n.local>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "abe8c2c7-41bd-4423-b907-aafb63476918"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]
