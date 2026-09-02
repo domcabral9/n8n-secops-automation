@@ -48,6 +48,14 @@ n8n-secops-automation/
 qualquer mudança no editor do n8n precisa ser exportada e commitada de volta pra não divergir do que
 está rodando ao vivo (ver gotcha de client-side cache abaixo).
 
+**O que é commitado não é o export bruto.** Desde a limpeza de segurança de 2026-09-02, o export real
+da instância tem IDs de recurso reais (planilha, template do Doc, pasta do Drive, IDs de credencial) e
+o nome legível do formulário - nenhum disso vai pro repositório em texto puro. Antes de commitar um
+export novo, substituir esses valores pelos placeholders já usados (`<SPREADSHEET_ID>`,
+`<TEMPLATE_DOC_ID>`, `<DRIVE_FOLDER_ID>`, `<SHEET_GID>`, `<GOOGLE_*_CREDENTIAL_ID>`) - o mesmo vale pro
+`apps-script/normalizacao.gs`, cujo `QUESTION_ID_MAP` real fica só no ambiente, nunca no git (o
+commitado usa IDs fictícios sequenciais, mantendo a estrutura/nomes de campo).
+
 ## Acesso ao ambiente (dev, VM local)
 
 VM VirtualBox (`n8n-poc`), rede bridged (não host-only, de propósito: mais de uma máquina na mesma rede
