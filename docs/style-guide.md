@@ -39,6 +39,23 @@ acrescenta nada que o leitor não já soubesse.
 perguntar - o leitor perde alguma informação real que ele não teria adivinhado sozinho? Se a resposta
 for não, cortar.
 
+## Nunca nomear o empregador real
+
+Nenhum texto deste projeto nomeia a empresa real por trás do processo que o motivou - sempre "a
+empresa"/"ambiente corporativo", nunca o nome próprio, mesmo quando o contexto deixa claro que existe
+um empregador real.
+
+**Por quê**: o projeto descreve, com bastante detalhe, o processo interno de segurança de uma empresa
+real (estrutura do formulário, critérios de risco, nomes de área) - nomear o empregador transformaria
+documentação técnica de portfólio em divulgação de processo interno vinculada a uma empresa
+identificável, o que não é apropriado independente de quão genérico o conteúdo pareça.
+
+**Escopo**: mesmo escopo das regras acima - comentário de código, commit, PR, README, esta própria
+documentação.
+
+**Como aplicar**: antes de finalizar qualquer texto, escanear por menções ao nome real do empregador e
+substituir por "a empresa" ou equivalente genérico.
+
 ## Nenhuma assinatura de ferramenta de IA nos artefatos do projeto
 
 Este projeto é construído com apoio de ferramentas de IA, mas os artefatos que produz (commits, corpo
