@@ -9,12 +9,20 @@
  * detecta caso o mapeamento tenha ficado desatualizado (ver checkMappingDrift_).
  */
 
+// Substituir pelo ID real da planilha vinculada ao Form no seu ambiente -
+// valor redigido de proposito, especifico de cada instalacao (ver
+// docs/DEVELOPMENT.md, secao de IDs de ambiente).
 var SPREADSHEET_ID = '<SPREADSHEET_ID>';
 var NORMALIZED_SHEET_NAME = 'Normalizado';
 var TIMEZONE = 'America/Sao_Paulo';
 
 // Fonte unica de verdade do mapeamento. Ao adicionar/remover uma pergunta no
 // Form, atualizar aqui - ver docs/DEVELOPMENT.md para o runbook completo.
+//
+// IDs abaixo sao ficticios (sequenciais de proposito) - os IDs reais das
+// perguntas do formulario deste ambiente foram redigidos. Pra obter os
+// verdadeiros, rodar no editor de Apps Script vinculado ao Form:
+//   Logger.log(FormApp.getActiveForm().getItems().map(i => [i.getId(), i.getTitle()]))
 var QUESTION_ID_MAP = {
   '1000000001': 'app_name',
   '1000000002': 'app_version',
