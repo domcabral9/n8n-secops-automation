@@ -188,7 +188,7 @@
               {
                 "action": "replaceAll",
                 "text": "{{now}}",
-                "replaceText": "={{$now}}"
+                "replaceText": "={{ $now.toFormat('dd/MM/yyyy HH:mm') }}"
               },
               {
                 "action": "replaceAll",
@@ -834,7 +834,7 @@
       "node:Google Sheets Trigger": {
         "documentId": "1Bvetmye_KkGCagWYokQGeuEtKkyARzurDpcoF17oBNg",
         "sheetId": 1333426654,
-        "lastIndexChecked": 5
+        "lastIndexChecked": 6
       }
     },
     "meta": {
@@ -843,7 +843,7 @@
     "pinData": {},
     "versionId": "f2952344-aaf9-4fc6-851a-687ce2e3c031",
     "activeVersionId": "f2952344-aaf9-4fc6-851a-687ce2e3c031",
-    "versionCounter": 417,
+    "versionCounter": 418,
     "triggerCount": 1,
     "tags": [],
     "shared": [
