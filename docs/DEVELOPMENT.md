@@ -139,12 +139,29 @@ anterior**, não de qualquer outro node mais acima no fluxo. Se "Update a docume
 Node').item.json.campo` explícito sempre que o node imediatamente anterior não for quem produziu o
 dado que você quer.
 
-### Google Docs API exige string em `replaceAllText`, mesmo pra placeholder numérico
+### Google Docs API exige string em `replaceAllText`, mesmo pra placeholder numérico ou de data
 
-Uma expressão n8n que referencia só um campo (`={{ $json.campo }}`) devolve o tipo nativo do dado - se
-o campo é um number (`risk_score`, `probability_score`, `impact_score`), a chamada à API do Google Docs
-falha com `Invalid value ... (TYPE_STRING)`. Sempre `.toString()` explícito na expressão pra qualquer
-placeholder numérico.
+Uma expressão n8n que referencia só um campo (`={{ $json.campo }}` ou `={{ $now }}`) devolve o tipo
+nativo do dado, não uma string - se o campo é um number (`risk_score`, `probability_score`,
+`impact_score`) ou um objeto de data (`$now`, um `DateTime` do Luxon), a chamada à API do Google Docs
+falha com `Invalid value ... (TYPE_STRING)`. Sempre forçar string explícita na expressão: `.toString()`
+pra número, `.toFormat('dd/MM/yyyy HH:mm')` (ou equivalente) pra `$now`.
+
+### Trigger instalável do Apps Script pode parar de disparar silenciosamente
+
+Sintoma: o formulário recebe a resposta normalmente (aparece em "Form Responses 1"), mas nenhuma linha
+nova aparece em `Normalizado` - e o painel "Execuções" do Apps Script não mostra nem uma tentativa
+(nem sucesso, nem erro) desde um certo ponto no tempo. Não é bug no código do script - é o registro do
+trigger no lado do Google que parou de funcionar (causa mais provável: autorização expirada/revogada
+silenciosamente). Diagnóstico: abrir "Acionadores" e conferir a data da última execução; se estiver
+muito atrasada em relação a submissões reais que deveriam ter disparado, apagar o trigger e criar um
+novo do zero (função `onFormSubmit`, origem "Do formulário", evento "Ao enviar formulário") - isso força
+o Google a pedir reautorização, o que resolve a maioria dos casos.
+
+**Rodar a função `onFormSubmit` direto no editor (botão "Executar") não é um teste válido**: sem um
+evento de submissão real, `e` chega vazio e `e.response` quebra com `TypeError: Cannot read properties
+of undefined (reading 'response')` - isso não indica um bug, só que a função precisa de uma submissão
+real pelo formulário pra ser testada.
 
 ### Colar texto no Google Doc pode corromper o placeholder sem aviso
 
