@@ -51,6 +51,13 @@ como risco baixo sem nenhuma ressalva - a única média ponderada permitia que b
 uma criticidade/exposição alta demais. Com a separação, o mesmo perfil corretamente sai como Homologado
 com Ressalvas.
 
+**Isenção pra software standalone**: MFA, SSO, RBAC e logs de auditoria não fazem sentido pra um
+software autônomo sem contas de usuário (um leitor de PDF, um utilitário local) - o modelo original
+penalizava a ausência desses controles como risco máximo, mesmo quando a pergunta simplesmente não se
+aplicava. A correção suspende a penalidade só quando a hospedagem é "Standalone" **e** a resposta é
+"Não"/"Não sei informar" - um software autônomo que realmente tem um desses controles (um gerenciador
+de senhas local com MFA próprio, por exemplo) continua recebendo o crédito normalmente.
+
 ## Evidência real
 
 | Canvas do workflow (execução bem-sucedida) |
@@ -93,6 +100,39 @@ A aplicação pode ser homologada mediante avaliação complementar e aceite dos
 
 O parecer completo (gerado no Google Doc real) inclui também uma seção com todas as 27 respostas do
 formulário agrupadas por categoria - não só o subconjunto usado no cálculo de risco acima.
+
+Segundo exemplo real, mostrando a isenção de software standalone em ação (submissão real, disparada
+automaticamente pelo formulário, sem nenhum clique manual):
+
+```
+PARECER TÉCNICO DE AVALIAÇÃO DE SOFTWARE
+
+Aplicação: 7-Zip
+Criticidade: Baixa
+Modelo de hospedagem: Standalone (instalação local, sem login)
+
+Score final (0-5, maior = mais seguro): 5
+Classificação: Homologado
+
+Probabilidade de ocorrência: Baixa (5)
+Impacto potencial: Baixo (5)
+
+Principais fatores desta avaliação:
+Nenhum fator de risco relevante identificado nos critérios avaliados.
+
+Pontos positivos:
+- Aplicação sem exposição direta à internet.
+- Não há indicação de tratamento de dados pessoais.
+
+Critérios não aplicáveis a este software:
+- Autenticação multifator (MFA) não avaliada - software standalone sem superfície de autenticação.
+- Autenticação centralizada (SSO) não avaliada - software standalone sem superfície de autenticação.
+- Controle de acesso baseado em papéis (RBAC) não avaliado - software standalone sem contas de usuário.
+- Trilhas de auditoria (logging) não avaliadas - software standalone sem contas de usuário.
+
+Recomendação:
+A aplicação atende aos critérios mínimos de segurança e pode ser homologada para uso.
+```
 
 ## Arquitetura
 
