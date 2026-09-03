@@ -31,25 +31,29 @@ const CRITERIA = [
     positive: normalized.mfa,
     positiveText: 'Aplicação utiliza autenticação multifator (MFA).',
     negativeText: 'Ausência de autenticação multifator (MFA).',
+    naoAplicavelText: 'Autenticação multifator (MFA) não avaliada - software standalone sem superfície de autenticação.',
     critical: true
   },
   {
     key: 'sso',
     positive: normalized.sso,
     positiveText: 'Aplicação integrada a autenticação centralizada (SSO).',
-    negativeText: 'Ausência de autenticação centralizada (SSO).'
+    negativeText: 'Ausência de autenticação centralizada (SSO).',
+    naoAplicavelText: 'Autenticação centralizada (SSO) não avaliada - software standalone sem superfície de autenticação.'
   },
   {
     key: 'rbac',
     positive: normalized.rbac,
     positiveText: 'Aplicação possui controle de acesso baseado em papéis (RBAC).',
-    negativeText: 'Controle de acesso baseado em papéis (RBAC) não identificado.'
+    negativeText: 'Controle de acesso baseado em papéis (RBAC) não identificado.',
+    naoAplicavelText: 'Controle de acesso baseado em papéis (RBAC) não avaliado - software standalone sem contas de usuário.'
   },
   {
     key: 'audit',
     positive: normalized.audit,
     positiveText: 'Aplicação mantém trilhas de auditoria (logging).',
-    negativeText: 'Ausência de trilhas de auditoria (logging). Possível dificuldade em investigações.'
+    negativeText: 'Ausência de trilhas de auditoria (logging). Possível dificuldade em investigações.',
+    naoAplicavelText: 'Trilhas de auditoria (logging) não avaliadas - software standalone sem contas de usuário.'
   },
   {
     key: 'internet_exposed',
@@ -66,16 +70,19 @@ const CRITERIA = [
 ];
 
 const ranked = CRITERIA.map((c) => {
-  const info = criteriaByKey[c.key] || { weight: 0, risk: 0 };
-  return { ...c, contribution: info.weight * info.risk };
+  const info = criteriaByKey[c.key] || { weight: 0, risk: 0, applicable: true };
+  return { ...c, applicable: info.applicable !== false, contribution: info.weight * info.risk };
 }).sort((a, b) => b.contribution - a.contribution);
 
 const pontos_positivos = [];
 const pontos_atencao = [];
 const riscos_criticos = [];
+const nao_aplicaveis = [];
 
 ranked.forEach((c) => {
-  if (c.positive) {
+  if (!c.applicable) {
+    nao_aplicaveis.push(c.naoAplicavelText);
+  } else if (c.positive) {
     pontos_positivos.push(c.positiveText);
   } else if (c.critical) {
     riscos_criticos.push(c.negativeText);
@@ -84,7 +91,7 @@ ranked.forEach((c) => {
   }
 });
 
-const topRiscos = ranked.filter((c) => !c.positive);
+const topRiscos = ranked.filter((c) => c.applicable && !c.positive);
 const principaisFatores = topRiscos.length > 0
   ? topRiscos.slice(0, 2).map((c) => c.negativeText).join(' ')
   : 'Nenhum fator de risco relevante identificado nos critérios avaliados.';
@@ -153,6 +160,13 @@ if (pontos_atencao.length > 0) {
 if (riscos_criticos.length > 0) {
   parecer += `\nRiscos críticos:\n`;
   riscos_criticos.forEach((item) => {
+    parecer += `- ${item}\n`;
+  });
+}
+
+if (nao_aplicaveis.length > 0) {
+  parecer += `\nCritérios não aplicáveis a este software:\n`;
+  nao_aplicaveis.forEach((item) => {
     parecer += `- ${item}\n`;
   });
 }

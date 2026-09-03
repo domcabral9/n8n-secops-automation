@@ -49,6 +49,13 @@ dimensão e no total, depois invertida (`5 - risco`) pra um score de segurança.
 reaproveitadas do `risk-engine.service.ts` do [`morpheus-beta`](https://github.com/domcabral9/morpheus-beta)
 (mesma escala 0-5): `probability_level`/`impact_level` em 1.66/3.33, `recommendation` em 3.0/4.0.
 
+**Isenção pra software standalone**: quando `infra_hosting` é `"Standalone (instalação local, sem
+login)"`, os critérios MFA/SSO/RBAC/Auditoria ficam `applicable: false` (excluídos do cálculo, nem
+somam como risco nem como seguro) **se e somente se** a resposta não for "Sim" - um software autônomo
+que genuinamente tem um desses controles (ex.: um gerenciador de senhas local com MFA próprio) continua
+recebendo o crédito normalmente. `weightedAverageRisk` filtra por `applicable !== false` antes de somar
+peso/risco, tanto por dimensão quanto no total.
+
 **Entrada**: o item vindo de "Normalização" (via "Condição Crítica" → "App Crítico"/"App Padrão") - os
 campos limpos já gravados pelo Apps Script.
 
