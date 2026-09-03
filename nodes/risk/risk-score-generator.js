@@ -58,10 +58,24 @@ const normalized = {
   audit: normalizeBoolean(raw.sec_audit_logging)
 };
 
+// Software autonomo (Adobe Reader, um navegador) nunca vai ter MFA/SSO/RBAC/
+// logs de acesso - nao porque o controle e ruim, mas porque a pergunta nao
+// se aplica. "Standalone" so SUSPENDE A PENALIDADE de "ausente"; um "Sim"
+// real (ex.: gerenciador de senhas local com MFA proprio) sempre conta como
+// credito, mesmo com hospedagem Standalone.
+const STANDALONE_HOSTING = 'Standalone (instalação local, sem login)';
+const isStandalone = normalized.hosting === STANDALONE_HOSTING;
+
+function applicable(rawAnswer) {
+  return !(isStandalone && !normalizeBoolean(rawAnswer));
+}
+
 /**
  * Fonte unica de verdade de peso + dimensao por criterio. `risk` e sempre
  * 0 (seguro) a 5 (risco maximo) - a importancia relativa vive so no peso,
- * nao mais tambem num teto de escala diferente por criterio.
+ * nao mais tambem num teto de escala diferente por criterio. `applicable:
+ * false` exclui o criterio do calculo (nem soma como risco nem como seguro)
+ * - ver STANDALONE_HOSTING acima.
  *
  * PROBABILITY = afeta a chance de um incidente ocorrer (autenticacao,
  * exposicao). IMPACT = afeta a gravidade se ocorrer (criticidade do
@@ -70,13 +84,13 @@ const normalized = {
  * só o tamanho do estrago e a velocidade de deteccao/resposta depois dele.
  */
 const RISK_CRITERIA = [
-  { key: 'criticality', weight: 2.0, dimension: 'IMPACT', risk: criticalityRisk(normalized.criticality) },
-  { key: 'mfa', weight: 2.0, dimension: 'PROBABILITY', risk: normalized.mfa ? 0 : 5 },
-  { key: 'internet_exposed', weight: 1.5, dimension: 'PROBABILITY', risk: normalized.internet_exposed ? 5 : 0 },
-  { key: 'personal_data', weight: 1.5, dimension: 'IMPACT', risk: normalized.personal_data ? 5 : 0 },
-  { key: 'sso', weight: 1.0, dimension: 'PROBABILITY', risk: normalized.sso ? 0 : 5 },
-  { key: 'rbac', weight: 1.0, dimension: 'IMPACT', risk: normalized.rbac ? 0 : 5 },
-  { key: 'audit', weight: 1.0, dimension: 'IMPACT', risk: normalized.audit ? 0 : 5 }
+  { key: 'criticality', weight: 2.0, dimension: 'IMPACT', risk: criticalityRisk(normalized.criticality), applicable: true },
+  { key: 'mfa', weight: 2.0, dimension: 'PROBABILITY', risk: normalized.mfa ? 0 : 5, applicable: applicable(raw.sec_mfa) },
+  { key: 'internet_exposed', weight: 1.5, dimension: 'PROBABILITY', risk: normalized.internet_exposed ? 5 : 0, applicable: true },
+  { key: 'personal_data', weight: 1.5, dimension: 'IMPACT', risk: normalized.personal_data ? 5 : 0, applicable: true },
+  { key: 'sso', weight: 1.0, dimension: 'PROBABILITY', risk: normalized.sso ? 0 : 5, applicable: applicable(raw.sec_sso) },
+  { key: 'rbac', weight: 1.0, dimension: 'IMPACT', risk: normalized.rbac ? 0 : 5, applicable: applicable(raw.sec_role_based_access) },
+  { key: 'audit', weight: 1.0, dimension: 'IMPACT', risk: normalized.audit ? 0 : 5, applicable: applicable(raw.sec_audit_logging) }
 ];
 
 const PROBABILITY_LEVELS = [
@@ -102,9 +116,10 @@ function clamp(value, min, max) {
 }
 
 function weightedAverageRisk(items) {
-  const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+  const applicableItems = items.filter((item) => item.applicable !== false);
+  const totalWeight = applicableItems.reduce((sum, item) => sum + item.weight, 0);
   if (totalWeight === 0) return 0;
-  const weightedSum = items.reduce((sum, item) => sum + item.risk * item.weight, 0);
+  const weightedSum = applicableItems.reduce((sum, item) => sum + item.risk * item.weight, 0);
   return weightedSum / totalWeight;
 }
 
