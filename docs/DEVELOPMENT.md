@@ -200,6 +200,28 @@ Google Cloud. Reconectar uma pode estourar a cota de refresh token e invalidar o
 `myaccount.google.com/permissions` por um grant duplicado/sem nome do mesmo app, removê-lo, e
 reconectar as 4 credenciais numa única sessão, seguido de `docker restart n8n`.
 
+### Google Sheets converte silenciosamente texto livre "parecido com número" pro tipo number
+
+Uma resposta de texto livre do formulário (ex.: versão do software `"103"`) pode virar um valor
+`number` de verdade na célula da planilha, mesmo respondida como texto - é o comportamento padrão do
+Sheets de auto-detectar tipo em qualquer escrita, não só via UI. O n8n lê o valor já como number, e
+qualquer placeholder do Google Doc alimentado por esse campo quebra com o mesmo erro `TYPE_STRING`
+descrito acima, mesmo sendo um campo de texto (não um score numérico). Por isso o node "Update a
+document" força `.toString()` explícito em **todos** os campos, não só nos que já são number por
+natureza - qualquer campo de texto livre é candidato a essa conversão silenciosa.
+
+### VM travou com o filesystem em somente leitura (`EXT4-fs error... Detected aborted journal`)
+
+Sintoma: `docker exec` falha com `OCI runtime exec failed: open /tmp/runc-process<N>: read-only file
+system`, mesmo com `docker ps`/`mount` mostrando tudo normal (`rw,relatime`) - o mount flag mente,
+`touch /tmp/algo` confirma de verdade (`Read-only file system`). Causa raiz confirmada via
+`journalctl -k | grep -i ext4`: o journal do ext4 abortou (`Detected aborted journal`), provavelmente
+ligado a alguma instabilidade anterior da VM (freeze, reset abrupto), e o kernel remontou `/` como
+somente-leitura por proteção. Corrigido com um reset da VM (`VBoxManage controlvm n8n reset`) - o
+journal foi refeito automaticamente no boot seguinte, sem precisar de `fsck` manual/interativo dessa
+vez. Se aparecer de novo e o boot pedir confirmação interativa de `fsck` no console, só dá pra resolver
+com acesso à janela da VM (não via SSH).
+
 ### `sudo` sem `su -` deixa `$HOME` errado
 
 Um shell aberto via `sudo` (sem o `-`) mantém `$HOME` do usuário original - `~/.ssh/authorized_keys`
