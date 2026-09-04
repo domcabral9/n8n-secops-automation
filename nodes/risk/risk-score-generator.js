@@ -83,13 +83,28 @@ function applicable(rawAnswer) {
  * Auditoria entram como IMPACT porque nao mudam a chance de comprometimento,
  * só o tamanho do estrago e a velocidade de deteccao/resposta depois dele.
  */
+// Pesos validados contra NIST SP 800-53 Rev 5 / SP 800-122 (nenhuma norma da
+// peso numerico - o que segue e nossa interpretacao em cima do que elas
+// definem como exigencia por linha de base, nao um numero literal da NIST):
+// - Criticidade (3.0): e o eixo que decide toda a linha de base do NIST
+//   (FIPS 199) - o maior peso do modelo de proposito.
+// - Dados pessoais (2.0): SP 800-122 trata confidencialidade de PII como
+//   categoria de dano distinta e grave (dano ao individuo, responsabilidade
+//   legal), nao so mais um campo de dado.
+// - MFA (2.0) e RBAC (1.5): IA-2(1)/(2) (MFA) e AC-6 (privilegio minimo,
+//   base do RBAC) sao exigidos a partir da linha de base Moderada no NIST -
+//   mesmo degrau de exigencia, por isso RBAC subiu pra perto do MFA (antes
+//   pesava a metade sem motivo claro).
+// - Auditoria (1.0, mantido): AU-2 (log basico) e exigido ate na linha
+//   Baixa - e universal no NIST, nao um diferencial de sistema critico, por
+//   isso nao ganhou reforco extra igual MFA/RBAC.
 const RISK_CRITERIA = [
-  { key: 'criticality', weight: 2.0, dimension: 'IMPACT', risk: criticalityRisk(normalized.criticality), applicable: true },
+  { key: 'criticality', weight: 3.0, dimension: 'IMPACT', risk: criticalityRisk(normalized.criticality), applicable: true },
   { key: 'mfa', weight: 2.0, dimension: 'PROBABILITY', risk: normalized.mfa ? 0 : 5, applicable: applicable(raw.sec_mfa) },
   { key: 'internet_exposed', weight: 1.5, dimension: 'PROBABILITY', risk: normalized.internet_exposed ? 5 : 0, applicable: true },
-  { key: 'personal_data', weight: 1.5, dimension: 'IMPACT', risk: normalized.personal_data ? 5 : 0, applicable: true },
+  { key: 'personal_data', weight: 2.0, dimension: 'IMPACT', risk: normalized.personal_data ? 5 : 0, applicable: true },
   { key: 'sso', weight: 1.0, dimension: 'PROBABILITY', risk: normalized.sso ? 0 : 5, applicable: applicable(raw.sec_sso) },
-  { key: 'rbac', weight: 1.0, dimension: 'IMPACT', risk: normalized.rbac ? 0 : 5, applicable: applicable(raw.sec_role_based_access) },
+  { key: 'rbac', weight: 1.5, dimension: 'IMPACT', risk: normalized.rbac ? 0 : 5, applicable: applicable(raw.sec_role_based_access) },
   { key: 'audit', weight: 1.0, dimension: 'IMPACT', risk: normalized.audit ? 0 : 5, applicable: applicable(raw.sec_audit_logging) }
 ];
 
@@ -103,12 +118,15 @@ const IMPACT_LEVELS = [
   { id: 'Médio', min: 1.67, max: 3.33 },
   { id: 'Baixo', min: 3.34, max: 5 }
 ];
-// Faixas de classificacao final - valores reaproveitados literalmente do
-// classificationDefs do morpheus-beta (mesma escala 0-5).
+// Faixas de classificacao final. Corte de "Homologado" amenizado pra 3.5
+// (era 4.0, valor literal do classificationDefs do morpheus-beta) apos
+// validacao com perfis diversos - 4.0/5.0 (80%) se mostrou rigoroso demais
+// na pratica. Sem base numerica na NIST (nenhuma norma da corte de
+// aprovacao) - decisao de apetite de risco, nao um numero derivado.
 const CLASSIFICATIONS = [
   { id: 'Não Homologado', min: 0, max: 2.99 },
-  { id: 'Homologado com Ressalvas', min: 3.0, max: 3.99 },
-  { id: 'Homologado', min: 4.0, max: 5 }
+  { id: 'Homologado com Ressalvas', min: 3.0, max: 3.49 },
+  { id: 'Homologado', min: 3.5, max: 5 }
 ];
 
 function clamp(value, min, max) {
@@ -154,6 +172,30 @@ switch (recommendation) {
     risk_level = 'Baixo';
 }
 
+/**
+ * Criticidade e 100% autodeclarada por quem preenche o formulario (muitas
+ * vezes um usuario comum, nao alguem de seguranca) - e o criterio de maior
+ * peso do modelo, entao um erro aqui distorce o resultado inteiro. O motor
+ * NUNCA sobrescreve o valor declarado - so sinaliza quando ele destoa
+ * fortemente de outros sinais do proprio formulario, pra um humano revisar.
+ * Checagens conservadoras, so com campos cujo valor exato ja conhecemos.
+ */
+function checkCriticalityMismatch(raw, normalized) {
+  const crit = (normalized.criticality || '').toLowerCase();
+  const personalDataSensitive = (raw.data_personal_type || '').toLowerCase().includes('sensíve');
+  const hasIntegrations = (raw.app_integrations || '').trim().toLowerCase() === 'sim';
+
+  if (crit === 'baixa' && (personalDataSensitive || hasIntegrations)) {
+    return 'Criticidade declarada como Baixa, mas o software trata dados sensíveis e/ou integra com outros sistemas - revisar classificação.';
+  }
+  if (crit === 'crítica' && isStandalone && !hasIntegrations && !normalized.personal_data) {
+    return 'Criticidade declarada como Crítica, mas o software é standalone, sem integrações nem dados pessoais - revisar classificação.';
+  }
+  return '';
+}
+
+const criticality_review_flag = checkCriticalityMismatch(raw, normalized);
+
 const debug_score = {
   normalized,
   criteria: RISK_CRITERIA,
@@ -174,7 +216,8 @@ return [{
     probability_score,
     probability_level,
     impact_score,
-    impact_level
+    impact_level,
+    criticality_review_flag
   },
 
   debug_score

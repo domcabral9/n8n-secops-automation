@@ -96,9 +96,13 @@ var SECTION_GROUPS = [
   { section: 'Informacoes Adicionais', fields: ['app_notes'] },
 ];
 
+// 'reprocessar' comeca sempre vazio - e' o analista quem marca 'Sim' direto
+// na planilha depois de corrigir algum campo (ex.: criticidade declarada
+// errada), pra pedir um recalculo sem duplicar a submissao. Ver
+// docs/DEVELOPMENT.md, secao de reprocessamento.
 var OUTPUT_COLUMNS = ['form_timestamp', 'form_email', 'mapping_status']
   .concat(Object.keys(FIELD_LABELS))
-  .concat(['full_answers_json', 'parecer_doc_url']);
+  .concat(['full_answers_json', 'parecer_doc_url', 'reprocessar']);
 
 function onFormSubmit(e) {
   var answers = {};

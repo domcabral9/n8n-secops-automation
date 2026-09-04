@@ -133,7 +133,7 @@ Modelo de hospedagem: ${normalized.hosting}
 
 Score final (0-5, maior = mais seguro): ${analysis.risk_score}
 Classificação: ${analysis.recommendation}
-
+${analysis.criticality_review_flag ? `\n⚠ Revisar criticidade declarada: ${analysis.criticality_review_flag}\n` : ''}
 Probabilidade de ocorrência: ${analysis.probability_level} (${analysis.probability_score})
 Impacto potencial: ${analysis.impact_level} (${analysis.impact_score})
 
@@ -186,6 +186,12 @@ switch (analysis.recommendation) {
     parecer += 'A aplicação atende aos critérios mínimos de segurança e pode ser homologada para uso.';
 }
 
+parecer += `
+
+Este parecer é gerado de forma automatizada a partir das respostas do formulário e serve como insumo
+pra decisão de homologação - a confirmação final, incluindo eventual ajuste da criticidade declarada,
+cabe ao analista responsável antes da assinatura.`;
+
 return [{
   ...data,
 
@@ -200,5 +206,6 @@ return [{
   probability_score: analysis.probability_score,
   probability_level: analysis.probability_level,
   impact_score: analysis.impact_score,
-  impact_level: analysis.impact_level
+  impact_level: analysis.impact_level,
+  criticality_review_flag: analysis.criticality_review_flag
 }];
