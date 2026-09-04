@@ -52,6 +52,13 @@ arquivo novo e rastreável por submissão, com o link registrado de volta na aba
 (`parecer_doc_url`) - existe um índice de "qual parecer corresponde a qual submissão" sem precisar abrir
 pasta por pasta no Drive.
 
+**Isso também é o motivo de reprocessamento não poder atualizar um Doc já preenchido in-place**:
+`replaceAllText` da API do Google Docs só encontra o `{{placeholder}}` literal enquanto ele existe no
+documento - depois de preenchido uma vez, o texto de busca não existe mais, e uma segunda passada não
+tem o que substituir (falha silenciosamente, sem erro). Testado ao vivo e confirmado: um mecanismo de
+correção/reprocessamento precisa sempre gerar um Doc novo (mesmo caminho de uma submissão nova), nunca
+tentar reescrever o existente.
+
 ## Motor de score: Probabilidade x Impacto
 
 O cálculo de risco dentro de `Gerador de Score` segue o mesmo padrão do motor de risco do
@@ -59,3 +66,13 @@ O cálculo de risco dentro de `Gerador de Score` segue o mesmo padrão do motor 
 critério tem peso (importância) e dimensão (`PROBABILITY` ou `IMPACT`), o motor calcula uma média
 ponderada de risco por dimensão e inverte pra um score de segurança (0-5, maior = mais seguro). Ver
 [`docs/nodes.md`](./nodes.md) pro detalhamento de cada critério.
+
+## O parecer é insumo pra decisão humana, não decisão autônoma
+
+O critério de maior peso do modelo (criticidade do negócio) é 100% autodeclarado por quem preenche o
+formulário - fora do controle da automação, e sujeito a erro genuíno (subestimar ou superestimar sem
+perceber). O motor nunca corrige esse valor sozinho: só sinaliza divergência forte contra outros sinais
+do próprio formulário (`criticality_review_flag`, ver [`docs/nodes.md`](./nodes.md)) pra um analista
+revisar. O parecer gerado carrega essa mensagem de forma explícita no próprio texto - é apoio à decisão
+de homologação, com a confirmação final (incluindo eventual ajuste da criticidade) cabendo sempre a uma
+pessoa antes da assinatura.
