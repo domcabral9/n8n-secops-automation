@@ -192,6 +192,26 @@ outros valores) - dá pra ler com o driver `sqlite3` já empacotado dentro da pr
 (`/usr/local/lib/node_modules/n8n/node_modules/sqlite3`, sem precisar instalar nada) e um resolvedor
 recursivo simples desse formato.
 
+### `replaceAllText` do Google Docs só funciona uma vez por placeholder
+
+A API só encontra o texto literal `{{campo}}` **enquanto ele existe** no documento - depois que um Doc
+já foi preenchido, o texto de busca não está mais lá, e uma segunda chamada de `replaceAllText` não tem
+o que substituir. Não dá erro nenhum, só não faz nada (0 substituições, silencioso). **Um mecanismo de
+correção/reprocessamento nunca deve tentar atualizar um Doc já preenchido in-place** - sempre gerar um
+Doc novo a partir do template (mesmo caminho de uma submissão nova), mesmo que isso signifique um Doc a
+mais no Drive por correção.
+
+### Google Sheets Trigger em modo `anyUpdate`/`rowUpdate` pode devolver a linha vazia
+
+Testado ao vivo: com o evento "Row Added or Updated" + "Columns to Watch" restrito a uma coluna
+específica, uma edição real nessa coluna disparou o trigger, mas ele classificou o evento como
+`change_type: "added"` (não "updated") e devolveu quase todos os campos da linha como string vazia -
+de forma persistente entre ciclos de poll, não uma falha transitória de um único ciclo. Causa raiz não
+confirmada (suspeita: desalinhamento do mecanismo de diff de revisão do Sheets depois que uma coluna
+nova foi adicionada à planilha manualmente, já com dados existentes). Sem solução aplicada ainda - o
+gatilho foi revertido pra `Row Added` simples (comportamento validado e confiável) até haver um desenho
+que não dependa desse modo do trigger.
+
 ### Reconectar uma credencial Google pode invalidar outra sem aviso
 
 As 4 credenciais OAuth do n8n (Sheets Trigger, Sheets, Docs, Drive) compartilham o mesmo Client ID do
