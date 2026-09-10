@@ -90,12 +90,16 @@ parecer.
 Parâmetros de cada um vivem só em `workflows/software-risk-assessment.json` (exportado da instância) -
 não há arquivo fonte separado, então a documentação aqui é a fonte de verdade sobre o que cada um faz.
 
+O workflow tem 6 nodes, todos numa cadeia linear (`Trigger → Gerador de Score → Decisão Técnica →
+Copiar Template → Update a document → Registrar Link do Parecer`). Não há node de normalização/
+transformação no n8n - a linha lida da aba `Normalizado` já vem limpa do Apps Script, o `Gerador de
+Score` lê o `$json` do trigger direto. Um branch antigo de classificação (`Condição Crítica` → `App
+Crítico`/`App Padrão`) foi removido na auditoria de 2026-09-10: só setava um campo `risk_flag` que
+nenhum node consumia.
+
 | Node | Tipo | O que faz |
 |---|---|---|
 | Google Sheets Trigger | `googleSheetsTrigger` | Faz polling na aba `Normalizado`, dispara em `rowAdded`. |
-| Normalização | Set/Edit Fields | Passthrough 1:1 dos campos já limpos pelo Apps Script - sem lógica de fallback. |
-| Condição Crítica | IF | Ramifica por `app_criticality === "Crítica"` - dropdown fechado no formulário, match exato é seguro. |
-| App Crítico / App Padrão | Set | Marca o ramo que a submissão seguiu (usado só pra rastreio no canvas, não afeta o cálculo). |
 | Copiar Template | Google Drive (`copy`) | Copia o Doc-template pra um arquivo novo por submissão, nome dinâmico (`Parecer Técnico - {{app_name}} - {{form_timestamp}}`). |
 | Update a document | Google Docs (`update`) | Find-and-replace de cada `{{campo}}` no Doc recém-copiado, usando `$('Decisão Técnica').item.json.<campo>` explícito (nunca `$json` bare - ver `docs/DEVELOPMENT.md` pro porquê). |
-| Registrar Link do Parecer | Google Sheets (`appendOrUpdate`) | Escreve `parecer_doc_url` de volta na linha correspondente da aba `Normalizado`. |
+| Registrar Link do Parecer | Google Sheets (`appendOrUpdate`) | Escreve `parecer_doc_url` de volta na linha correspondente da aba `Normalizado`, casando por `form_timestamp`. |

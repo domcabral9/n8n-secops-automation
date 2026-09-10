@@ -53,8 +53,19 @@ da instância tem IDs de recurso reais (planilha, template do Doc, pasta do Driv
 o nome legível do formulário - nenhum disso vai pro repositório em texto puro. Antes de commitar um
 export novo, substituir esses valores pelos placeholders já usados (`<SPREADSHEET_ID>`,
 `<TEMPLATE_DOC_ID>`, `<DRIVE_FOLDER_ID>`, `<SHEET_GID>`, `<GOOGLE_*_CREDENTIAL_ID>`) - o mesmo vale pro
-`apps-script/normalizacao.gs`, cujo `QUESTION_ID_MAP` real fica só no ambiente, nunca no git (o
-commitado usa IDs fictícios sequenciais, mantendo a estrutura/nomes de campo).
+`apps-script/normalizacao.gs`, cujo `SPREADSHEET_ID` e `QUESTION_ID_MAP` reais ficam só no ambiente,
+nunca no git (o commitado usa `<SPREADSHEET_ID>` e IDs de pergunta fictícios sequenciais, mantendo a
+estrutura/nomes de campo).
+
+**Nunca colar `apps-script/normalizacao.gs` do repo direto no editor de Apps Script ao vivo.** Ele está
+redigido - `SPREADSHEET_ID = '<SPREADSHEET_ID>'` faz o `onFormSubmit` quebrar com "Illegal spreadsheet
+id or key", e o `QUESTION_ID_MAP` fictício faz todo campo vir vazio. Aconteceu de verdade (2026-09-10).
+Ao atualizar o script ao vivo: pegar só o *diff* estrutural do repo e aplicar manualmente sobre a
+versão que já roda, ou restaurar do histórico de versões do editor e re-aplicar a mudança. Se o
+`QUESTION_ID_MAP` real se perder, regenerar rodando no editor
+`FormApp.getActiveForm().getItems().forEach(i => Logger.log(i.getId() + ' | ' + i.getType() + ' | ' + i.getTitle()))`
+e remontar o mapa a partir dos itens que **não** são `SECTION_HEADER`/`PAGE_BREAK` - o `mapping_status`
+na primeira submissão seguinte confirma se ficou 26/26 (`OK`) ou não (`ATENÇÃO: ...`).
 
 ## Acesso ao ambiente (dev, VM local)
 
