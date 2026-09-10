@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-09-04T13:53:18.000Z",
+    "updatedAt": "2026-09-10T18:26:02.000Z",
     "createdAt": "2026-03-15T21:24:39.688Z",
     "id": "q99KAxITafVpcuzM",
     "name": "Software Risk Assessment",
@@ -51,111 +51,12 @@
       },
       {
         "parameters": {
-          "assignments": {
-            "assignments": []
-          },
-          "includeOtherFields": true,
-          "options": {}
-        },
-        "type": "n8n-nodes-base.set",
-        "typeVersion": 3.4,
-        "position": [
-          -368,
-          0
-        ],
-        "id": "654a61db-0d22-4811-8a7f-2f8163cf849d",
-        "name": "Normalização"
-      },
-      {
-        "parameters": {
-          "conditions": {
-            "options": {
-              "caseSensitive": true,
-              "leftValue": "",
-              "typeValidation": "strict",
-              "version": 3
-            },
-            "conditions": [
-              {
-                "id": "9e023dcc-a740-4505-bfe9-ff3889fb0249",
-                "leftValue": "={{$json.app_criticality}}",
-                "rightValue": "Crítica",
-                "operator": {
-                  "type": "string",
-                  "operation": "equals",
-                  "name": "filter.operator.equals"
-                }
-              }
-            ],
-            "combinator": "or"
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.if",
-        "typeVersion": 2.3,
-        "position": [
-          -144,
-          0
-        ],
-        "id": "b341e568-e8f0-4ee7-aa92-e0b9da06cd6e",
-        "name": "Condição Critica"
-      },
-      {
-        "parameters": {
-          "assignments": {
-            "assignments": [
-              {
-                "id": "a8b3af2a-98fd-477f-8aad-75ba728258e8",
-                "name": "risk_flag",
-                "value": "CRITICAL_APPLICATION",
-                "type": "string"
-              }
-            ]
-          },
-          "includeOtherFields": true,
-          "options": {}
-        },
-        "type": "n8n-nodes-base.set",
-        "typeVersion": 3.4,
-        "position": [
-          80,
-          -96
-        ],
-        "id": "99fd18bb-5d67-4683-a171-5fef60361639",
-        "name": "App Critico"
-      },
-      {
-        "parameters": {
-          "assignments": {
-            "assignments": [
-              {
-                "id": "fc0b2d64-d557-4dd6-a7f6-77e9514e5089",
-                "name": "risk_flag",
-                "value": "STANDARD_APPLICATION",
-                "type": "string"
-              }
-            ]
-          },
-          "includeOtherFields": true,
-          "options": {}
-        },
-        "type": "n8n-nodes-base.set",
-        "typeVersion": 3.4,
-        "position": [
-          80,
-          96
-        ],
-        "id": "1a4a6a09-1732-4e63-998f-71a2e50267ec",
-        "name": "App Padrão"
-      },
-      {
-        "parameters": {
-          "jsCode": "/**\r\n * Node: Gerador de Score\r\n * Workflow: Software Risk Assessment\r\n *\r\n * Calcula Probabilidade, Impacto e o score final (0-5, maior = mais seguro) a\r\n * partir dos campos ja normalizados pelo Apps Script (ver\r\n * apps-script/normalizacao.gs) e repassados pelo node \"Normalizacao\" do n8n.\r\n * Nao deve receber nem tratar nomes de campo alternativos - o contrato de\r\n * entrada e fixo.\r\n *\r\n * Segue o mesmo padrao do risk-engine.service.ts do morpheus-beta: cada\r\n * criterio tem peso (importancia) e dimensao (PROBABILITY ou IMPACT), o motor\r\n * calcula uma media ponderada de risco por dimensao (0=seguro, 5=risco\r\n * maximo) e inverte (5 - risco) pra um score de seguranca. Probabilidade e\r\n * Impacto sao so diagnostico - nao ha regra de piso cruzando as duas; a\r\n * classificacao final vem de uma faixa unica sobre o score total, igual ao\r\n * morpheus-beta em runtime (a grade Probabilidade x Impacto la e so visual).\r\n */\r\n\r\nconst raw = $json;\r\n\r\n/**\r\n * As 6 perguntas booleanas do formulario sao hoje um radio fechado\r\n * Sim/Nao/Nao sei informar - \"sim\" e o unico valor tratado como verdadeiro,\r\n * \"nao sei informar\" e tratado como neutro (mesmo caminho que \"nao\").\r\n */\r\nfunction normalizeBoolean(value) {\r\n  if (typeof value !== 'string') return false;\r\n  return value.trim().toLowerCase() === 'sim';\r\n}\r\n\r\nfunction criticalityRisk(value) {\r\n  switch ((value || '').toLowerCase()) {\r\n    case 'crítica':\r\n      return 5;\r\n    case 'alta':\r\n      return 4;\r\n    case 'média':\r\n      return 2;\r\n    case 'baixa':\r\n      return 0;\r\n    default:\r\n      // Dado ausente/inesperado: assume risco moderado-alto, nao baixo -\r\n      // na duvida trata como mais arriscado, nunca mais seguro.\r\n      return 3;\r\n  }\r\n}\r\n\r\nconst normalized = {\r\n  app_name: raw.app_name || 'Não informado',\r\n  criticality: raw.app_criticality || 'Não informado',\r\n  hosting: raw.infra_hosting || 'Não informado',\r\n  internet_exposed: normalizeBoolean(raw.infra_internet_exposed),\r\n  personal_data: normalizeBoolean(raw.data_personal_data),\r\n  mfa: normalizeBoolean(raw.sec_mfa),\r\n  sso: normalizeBoolean(raw.sec_sso),\r\n  rbac: normalizeBoolean(raw.sec_role_based_access),\r\n  audit: normalizeBoolean(raw.sec_audit_logging)\r\n};\r\n\r\n// Software autonomo (Adobe Reader, um navegador) nunca vai ter MFA/SSO/RBAC/\r\n// logs de acesso - nao porque o controle e ruim, mas porque a pergunta nao\r\n// se aplica. \"Standalone\" so SUSPENDE A PENALIDADE de \"ausente\"; um \"Sim\"\r\n// real (ex.: gerenciador de senhas local com MFA proprio) sempre conta como\r\n// credito, mesmo com hospedagem Standalone.\r\nconst STANDALONE_HOSTING = 'Standalone (instalação local, sem login)';\r\nconst isStandalone = normalized.hosting === STANDALONE_HOSTING;\r\n\r\nfunction applicable(rawAnswer) {\r\n  return !(isStandalone && !normalizeBoolean(rawAnswer));\r\n}\r\n\r\n/**\r\n * Fonte unica de verdade de peso + dimensao por criterio. `risk` e sempre\r\n * 0 (seguro) a 5 (risco maximo) - a importancia relativa vive so no peso,\r\n * nao mais tambem num teto de escala diferente por criterio. `applicable:\r\n * false` exclui o criterio do calculo (nem soma como risco nem como seguro)\r\n * - ver STANDALONE_HOSTING acima.\r\n *\r\n * PROBABILITY = afeta a chance de um incidente ocorrer (autenticacao,\r\n * exposicao). IMPACT = afeta a gravidade se ocorrer (criticidade do\r\n * negocio, dados pessoais, blast radius, capacidade de resposta) - RBAC e\r\n * Auditoria entram como IMPACT porque nao mudam a chance de comprometimento,\r\n * só o tamanho do estrago e a velocidade de deteccao/resposta depois dele.\r\n */\r\n// Pesos validados contra NIST SP 800-53 Rev 5 / SP 800-122 (nenhuma norma da\r\n// peso numerico - o que segue e nossa interpretacao em cima do que elas\r\n// definem como exigencia por linha de base, nao um numero literal da NIST):\r\n// - Criticidade (3.0): e o eixo que decide toda a linha de base do NIST\r\n//   (FIPS 199) - o maior peso do modelo de proposito.\r\n// - Dados pessoais (2.0): SP 800-122 trata confidencialidade de PII como\r\n//   categoria de dano distinta e grave (dano ao individuo, responsabilidade\r\n//   legal), nao so mais um campo de dado.\r\n// - MFA (2.0) e RBAC (1.5): IA-2(1)/(2) (MFA) e AC-6 (privilegio minimo,\r\n//   base do RBAC) sao exigidos a partir da linha de base Moderada no NIST -\r\n//   mesmo degrau de exigencia, por isso RBAC subiu pra perto do MFA (antes\r\n//   pesava a metade sem motivo claro).\r\n// - Auditoria (1.0, mantido): AU-2 (log basico) e exigido ate na linha\r\n//   Baixa - e universal no NIST, nao um diferencial de sistema critico, por\r\n//   isso nao ganhou reforco extra igual MFA/RBAC.\r\nconst RISK_CRITERIA = [\r\n  { key: 'criticality', weight: 3.0, dimension: 'IMPACT', risk: criticalityRisk(normalized.criticality), applicable: true },\r\n  { key: 'mfa', weight: 2.0, dimension: 'PROBABILITY', risk: normalized.mfa ? 0 : 5, applicable: applicable(raw.sec_mfa) },\r\n  { key: 'internet_exposed', weight: 1.5, dimension: 'PROBABILITY', risk: normalized.internet_exposed ? 5 : 0, applicable: true },\r\n  { key: 'personal_data', weight: 2.0, dimension: 'IMPACT', risk: normalized.personal_data ? 5 : 0, applicable: true },\r\n  { key: 'sso', weight: 1.0, dimension: 'PROBABILITY', risk: normalized.sso ? 0 : 5, applicable: applicable(raw.sec_sso) },\r\n  { key: 'rbac', weight: 1.5, dimension: 'IMPACT', risk: normalized.rbac ? 0 : 5, applicable: applicable(raw.sec_role_based_access) },\r\n  { key: 'audit', weight: 1.0, dimension: 'IMPACT', risk: normalized.audit ? 0 : 5, applicable: applicable(raw.sec_audit_logging) }\r\n];\r\n\r\nconst PROBABILITY_LEVELS = [\r\n  { id: 'Alta', min: 0, max: 1.66 },\r\n  { id: 'Média', min: 1.67, max: 3.33 },\r\n  { id: 'Baixa', min: 3.34, max: 5 }\r\n];\r\nconst IMPACT_LEVELS = [\r\n  { id: 'Alto', min: 0, max: 1.66 },\r\n  { id: 'Médio', min: 1.67, max: 3.33 },\r\n  { id: 'Baixo', min: 3.34, max: 5 }\r\n];\r\n// Faixas de classificacao final. Corte de \"Homologado\" amenizado pra 3.5\r\n// (era 4.0, valor literal do classificationDefs do morpheus-beta) apos\r\n// validacao com perfis diversos - 4.0/5.0 (80%) se mostrou rigoroso demais\r\n// na pratica. Sem base numerica na NIST (nenhuma norma da corte de\r\n// aprovacao) - decisao de apetite de risco, nao um numero derivado.\r\nconst CLASSIFICATIONS = [\r\n  { id: 'Não Homologado', min: 0, max: 2.99 },\r\n  { id: 'Homologado com Ressalvas', min: 3.0, max: 3.49 },\r\n  { id: 'Homologado', min: 3.5, max: 5 }\r\n];\r\n\r\nfunction clamp(value, min, max) {\r\n  return Math.min(max, Math.max(min, value));\r\n}\r\n\r\nfunction weightedAverageRisk(items) {\r\n  const applicableItems = items.filter((item) => item.applicable !== false);\r\n  const totalWeight = applicableItems.reduce((sum, item) => sum + item.weight, 0);\r\n  if (totalWeight === 0) return 0;\r\n  const weightedSum = applicableItems.reduce((sum, item) => sum + item.risk * item.weight, 0);\r\n  return weightedSum / totalWeight;\r\n}\r\n\r\nfunction findLevel(bands, score) {\r\n  return bands.find((band) => score >= band.min && score <= band.max) || bands[bands.length - 1];\r\n}\r\n\r\nconst probabilityItems = RISK_CRITERIA.filter((c) => c.dimension === 'PROBABILITY');\r\nconst impactItems = RISK_CRITERIA.filter((c) => c.dimension === 'IMPACT');\r\n\r\nconst probability_risk = weightedAverageRisk(probabilityItems);\r\nconst impact_risk = weightedAverageRisk(impactItems);\r\nconst total_risk = weightedAverageRisk(RISK_CRITERIA);\r\n\r\nconst probability_score = Number(clamp(5 - probability_risk, 0, 5).toFixed(2));\r\nconst impact_score = Number(clamp(5 - impact_risk, 0, 5).toFixed(2));\r\nconst risk_score = Number(clamp(5 - total_risk, 0, 5).toFixed(2));\r\n\r\nconst probability_level = findLevel(PROBABILITY_LEVELS, probability_score).id;\r\nconst impact_level = findLevel(IMPACT_LEVELS, impact_score).id;\r\nconst recommendation = findLevel(CLASSIFICATIONS, risk_score).id;\r\n\r\nlet risk_level;\r\nswitch (recommendation) {\r\n  case 'Não Homologado':\r\n    risk_level = 'Alto';\r\n    break;\r\n  case 'Homologado com Ressalvas':\r\n    risk_level = 'Médio';\r\n    break;\r\n  default:\r\n    risk_level = 'Baixo';\r\n}\r\n\r\n/**\r\n * Criticidade e 100% autodeclarada por quem preenche o formulario (muitas\r\n * vezes um usuario comum, nao alguem de seguranca) - e o criterio de maior\r\n * peso do modelo, entao um erro aqui distorce o resultado inteiro. O motor\r\n * NUNCA sobrescreve o valor declarado - so sinaliza quando ele destoa\r\n * fortemente de outros sinais do proprio formulario, pra um humano revisar.\r\n * Checagens conservadoras, so com campos cujo valor exato ja conhecemos.\r\n */\r\nfunction checkCriticalityMismatch(raw, normalized) {\r\n  const crit = (normalized.criticality || '').toLowerCase();\r\n  const personalDataSensitive = (raw.data_personal_type || '').toLowerCase().includes('sensíve');\r\n  const hasIntegrations = (raw.app_integrations || '').trim().toLowerCase() === 'sim';\r\n\r\n  if (crit === 'baixa' && (personalDataSensitive || hasIntegrations)) {\r\n    return 'Criticidade declarada como Baixa, mas o software trata dados sensíveis e/ou integra com outros sistemas - revisar classificação.';\r\n  }\r\n  if (crit === 'crítica' && isStandalone && !hasIntegrations && !normalized.personal_data) {\r\n    return 'Criticidade declarada como Crítica, mas o software é standalone, sem integrações nem dados pessoais - revisar classificação.';\r\n  }\r\n  return '';\r\n}\r\n\r\nconst criticality_review_flag = checkCriticalityMismatch(raw, normalized);\r\n\r\nconst debug_score = {\r\n  normalized,\r\n  criteria: RISK_CRITERIA,\r\n  probability_risk,\r\n  impact_risk,\r\n  total_risk\r\n};\r\n\r\nreturn [{\r\n  ...raw,\r\n\r\n  normalized,\r\n\r\n  analysis: {\r\n    risk_score,\r\n    risk_level,\r\n    recommendation,\r\n    probability_score,\r\n    probability_level,\r\n    impact_score,\r\n    impact_level,\r\n    criticality_review_flag\r\n  },\r\n\r\n  debug_score\r\n}];\r\n"
+          "jsCode": "/**\r\n * Node: Gerador de Score\r\n * Workflow: Software Risk Assessment\r\n *\r\n * Calcula Probabilidade, Impacto e o score final (0-5, maior = mais seguro) a\r\n * partir dos campos ja normalizados pelo Apps Script (ver\r\n * apps-script/normalizacao.gs), lidos direto da linha da aba Normalizado pelo\r\n * Google Sheets Trigger. Nao deve receber nem tratar nomes de campo\r\n * alternativos - o contrato de entrada e fixo.\r\n *\r\n * Segue o mesmo padrao do risk-engine.service.ts do morpheus-beta: cada\r\n * criterio tem peso (importancia) e dimensao (PROBABILITY ou IMPACT), o motor\r\n * calcula uma media ponderada de risco por dimensao (0=seguro, 5=risco\r\n * maximo) e inverte (5 - risco) pra um score de seguranca. Probabilidade e\r\n * Impacto sao so diagnostico - nao ha regra de piso cruzando as duas; a\r\n * classificacao final vem de uma faixa unica sobre o score total, igual ao\r\n * morpheus-beta em runtime (a grade Probabilidade x Impacto la e so visual).\r\n */\r\n\r\nconst raw = $json;\r\n\r\n/**\r\n * As 6 perguntas booleanas do formulario sao hoje um radio fechado\r\n * Sim/Nao/Nao sei informar - \"sim\" e o unico valor tratado como verdadeiro,\r\n * \"nao sei informar\" e tratado como neutro (mesmo caminho que \"nao\").\r\n */\r\nfunction normalizeBoolean(value) {\r\n  if (typeof value !== 'string') return false;\r\n  return value.trim().toLowerCase() === 'sim';\r\n}\r\n\r\nfunction criticalityRisk(value) {\r\n  switch ((value || '').toLowerCase()) {\r\n    case 'crítica':\r\n      return 5;\r\n    case 'alta':\r\n      return 4;\r\n    case 'média':\r\n      return 2;\r\n    case 'baixa':\r\n      return 0;\r\n    default:\r\n      // Dado ausente/inesperado: assume risco moderado-alto, nao baixo -\r\n      // na duvida trata como mais arriscado, nunca mais seguro.\r\n      return 3;\r\n  }\r\n}\r\n\r\nconst normalized = {\r\n  app_name: raw.app_name || 'Não informado',\r\n  criticality: raw.app_criticality || 'Não informado',\r\n  hosting: raw.infra_hosting || 'Não informado',\r\n  internet_exposed: normalizeBoolean(raw.infra_internet_exposed),\r\n  personal_data: normalizeBoolean(raw.data_personal_data),\r\n  mfa: normalizeBoolean(raw.sec_mfa),\r\n  sso: normalizeBoolean(raw.sec_sso),\r\n  rbac: normalizeBoolean(raw.sec_role_based_access),\r\n  audit: normalizeBoolean(raw.sec_audit_logging)\r\n};\r\n\r\n// Software autonomo (Adobe Reader, um navegador) nunca vai ter MFA/SSO/RBAC/\r\n// logs de acesso - nao porque o controle e ruim, mas porque a pergunta nao\r\n// se aplica. \"Standalone\" so SUSPENDE A PENALIDADE de \"ausente\"; um \"Sim\"\r\n// real (ex.: gerenciador de senhas local com MFA proprio) sempre conta como\r\n// credito, mesmo com hospedagem Standalone.\r\nconst STANDALONE_HOSTING = 'Standalone (instalação local, sem login)';\r\nconst isStandalone = normalized.hosting === STANDALONE_HOSTING;\r\n\r\nfunction applicable(rawAnswer) {\r\n  return !(isStandalone && !normalizeBoolean(rawAnswer));\r\n}\r\n\r\n/**\r\n * Fonte unica de verdade de peso + dimensao por criterio. `risk` e sempre\r\n * 0 (seguro) a 5 (risco maximo) - a importancia relativa vive so no peso,\r\n * nao mais tambem num teto de escala diferente por criterio. `applicable:\r\n * false` exclui o criterio do calculo (nem soma como risco nem como seguro)\r\n * - ver STANDALONE_HOSTING acima.\r\n *\r\n * PROBABILITY = afeta a chance de um incidente ocorrer (autenticacao,\r\n * exposicao). IMPACT = afeta a gravidade se ocorrer (criticidade do\r\n * negocio, dados pessoais, blast radius, capacidade de resposta) - RBAC e\r\n * Auditoria entram como IMPACT porque nao mudam a chance de comprometimento,\r\n * só o tamanho do estrago e a velocidade de deteccao/resposta depois dele.\r\n */\r\n// Pesos validados contra NIST SP 800-53 Rev 5 / SP 800-122 (nenhuma norma da\r\n// peso numerico - o que segue e nossa interpretacao em cima do que elas\r\n// definem como exigencia por linha de base, nao um numero literal da NIST):\r\n// - Criticidade (3.0): e o eixo que decide toda a linha de base do NIST\r\n//   (FIPS 199) - o maior peso do modelo de proposito.\r\n// - Dados pessoais (2.0): SP 800-122 trata confidencialidade de PII como\r\n//   categoria de dano distinta e grave (dano ao individuo, responsabilidade\r\n//   legal), nao so mais um campo de dado.\r\n// - MFA (2.0) e RBAC (1.5): IA-2(1)/(2) (MFA) e AC-6 (privilegio minimo,\r\n//   base do RBAC) sao exigidos a partir da linha de base Moderada no NIST -\r\n//   mesmo degrau de exigencia, por isso RBAC subiu pra perto do MFA (antes\r\n//   pesava a metade sem motivo claro).\r\n// - Auditoria (1.0, mantido): AU-2 (log basico) e exigido ate na linha\r\n//   Baixa - e universal no NIST, nao um diferencial de sistema critico, por\r\n//   isso nao ganhou reforco extra igual MFA/RBAC.\r\nconst RISK_CRITERIA = [\r\n  { key: 'criticality', weight: 3.0, dimension: 'IMPACT', risk: criticalityRisk(normalized.criticality), applicable: true },\r\n  { key: 'mfa', weight: 2.0, dimension: 'PROBABILITY', risk: normalized.mfa ? 0 : 5, applicable: applicable(raw.sec_mfa) },\r\n  { key: 'internet_exposed', weight: 1.5, dimension: 'PROBABILITY', risk: normalized.internet_exposed ? 5 : 0, applicable: true },\r\n  { key: 'personal_data', weight: 2.0, dimension: 'IMPACT', risk: normalized.personal_data ? 5 : 0, applicable: true },\r\n  { key: 'sso', weight: 1.0, dimension: 'PROBABILITY', risk: normalized.sso ? 0 : 5, applicable: applicable(raw.sec_sso) },\r\n  { key: 'rbac', weight: 1.5, dimension: 'IMPACT', risk: normalized.rbac ? 0 : 5, applicable: applicable(raw.sec_role_based_access) },\r\n  { key: 'audit', weight: 1.0, dimension: 'IMPACT', risk: normalized.audit ? 0 : 5, applicable: applicable(raw.sec_audit_logging) }\r\n];\r\n\r\nconst PROBABILITY_LEVELS = [\r\n  { id: 'Alta', min: 0, max: 1.66 },\r\n  { id: 'Média', min: 1.67, max: 3.33 },\r\n  { id: 'Baixa', min: 3.34, max: 5 }\r\n];\r\nconst IMPACT_LEVELS = [\r\n  { id: 'Alto', min: 0, max: 1.66 },\r\n  { id: 'Médio', min: 1.67, max: 3.33 },\r\n  { id: 'Baixo', min: 3.34, max: 5 }\r\n];\r\n// Faixas de classificacao final. Corte de \"Homologado\" amenizado pra 3.5\r\n// (era 4.0, valor literal do classificationDefs do morpheus-beta) apos\r\n// validacao com perfis diversos - 4.0/5.0 (80%) se mostrou rigoroso demais\r\n// na pratica. Sem base numerica na NIST (nenhuma norma da corte de\r\n// aprovacao) - decisao de apetite de risco, nao um numero derivado.\r\nconst CLASSIFICATIONS = [\r\n  { id: 'Não Homologado', min: 0, max: 2.99 },\r\n  { id: 'Homologado com Ressalvas', min: 3.0, max: 3.49 },\r\n  { id: 'Homologado', min: 3.5, max: 5 }\r\n];\r\n\r\nfunction clamp(value, min, max) {\r\n  return Math.min(max, Math.max(min, value));\r\n}\r\n\r\nfunction weightedAverageRisk(items) {\r\n  const applicableItems = items.filter((item) => item.applicable !== false);\r\n  const totalWeight = applicableItems.reduce((sum, item) => sum + item.weight, 0);\r\n  if (totalWeight === 0) return 0;\r\n  const weightedSum = applicableItems.reduce((sum, item) => sum + item.risk * item.weight, 0);\r\n  return weightedSum / totalWeight;\r\n}\r\n\r\nfunction findLevel(bands, score) {\r\n  return bands.find((band) => score >= band.min && score <= band.max) || bands[bands.length - 1];\r\n}\r\n\r\nconst probabilityItems = RISK_CRITERIA.filter((c) => c.dimension === 'PROBABILITY');\r\nconst impactItems = RISK_CRITERIA.filter((c) => c.dimension === 'IMPACT');\r\n\r\nconst probability_risk = weightedAverageRisk(probabilityItems);\r\nconst impact_risk = weightedAverageRisk(impactItems);\r\nconst total_risk = weightedAverageRisk(RISK_CRITERIA);\r\n\r\nconst probability_score = Number(clamp(5 - probability_risk, 0, 5).toFixed(2));\r\nconst impact_score = Number(clamp(5 - impact_risk, 0, 5).toFixed(2));\r\nconst risk_score = Number(clamp(5 - total_risk, 0, 5).toFixed(2));\r\n\r\nconst probability_level = findLevel(PROBABILITY_LEVELS, probability_score).id;\r\nconst impact_level = findLevel(IMPACT_LEVELS, impact_score).id;\r\nconst recommendation = findLevel(CLASSIFICATIONS, risk_score).id;\r\n\r\nlet risk_level;\r\nswitch (recommendation) {\r\n  case 'Não Homologado':\r\n    risk_level = 'Alto';\r\n    break;\r\n  case 'Homologado com Ressalvas':\r\n    risk_level = 'Médio';\r\n    break;\r\n  default:\r\n    risk_level = 'Baixo';\r\n}\r\n\r\n/**\r\n * Criticidade e 100% autodeclarada por quem preenche o formulario (muitas\r\n * vezes um usuario comum, nao alguem de seguranca) - e o criterio de maior\r\n * peso do modelo, entao um erro aqui distorce o resultado inteiro. O motor\r\n * NUNCA sobrescreve o valor declarado - so sinaliza quando ele destoa\r\n * fortemente de outros sinais do proprio formulario, pra um humano revisar.\r\n * Checagens conservadoras, so com campos cujo valor exato ja conhecemos.\r\n */\r\nfunction checkCriticalityMismatch(raw, normalized) {\r\n  const crit = (normalized.criticality || '').toLowerCase();\r\n  const personalDataSensitive = (raw.data_personal_type || '').toLowerCase().includes('sensíve');\r\n  const hasIntegrations = (raw.app_integrations || '').trim().toLowerCase() === 'sim';\r\n\r\n  if (crit === 'baixa' && (personalDataSensitive || hasIntegrations)) {\r\n    return 'Criticidade declarada como Baixa, mas o software trata dados sensíveis e/ou integra com outros sistemas - revisar classificação.';\r\n  }\r\n  if (crit === 'crítica' && isStandalone && !hasIntegrations && !normalized.personal_data) {\r\n    return 'Criticidade declarada como Crítica, mas o software é standalone, sem integrações nem dados pessoais - revisar classificação.';\r\n  }\r\n  return '';\r\n}\r\n\r\nconst criticality_review_flag = checkCriticalityMismatch(raw, normalized);\r\n\r\nconst debug_score = {\r\n  normalized,\r\n  criteria: RISK_CRITERIA,\r\n  probability_risk,\r\n  impact_risk,\r\n  total_risk\r\n};\r\n\r\nreturn [{\r\n  ...raw,\r\n\r\n  normalized,\r\n\r\n  analysis: {\r\n    risk_score,\r\n    risk_level,\r\n    recommendation,\r\n    probability_score,\r\n    probability_level,\r\n    impact_score,\r\n    impact_level,\r\n    criticality_review_flag\r\n  },\r\n\r\n  debug_score\r\n}];\r\n"
         },
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          304,
+          -352,
           0
         ],
         "id": "2f5fa851-d1c8-4724-87c3-1719af07889c",
@@ -168,7 +69,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          528,
+          -112,
           0
         ],
         "id": "075db487-5f0c-4376-aba3-46855694d2e0",
@@ -311,7 +212,7 @@
         "type": "n8n-nodes-base.googleDocs",
         "typeVersion": 2,
         "position": [
-          976,
+          368,
           0
         ],
         "id": "f1fc7643-1785-4ddd-ab0c-3172a48d07e7",
@@ -349,7 +250,7 @@
         "type": "n8n-nodes-base.googleDrive",
         "typeVersion": 3,
         "position": [
-          752,
+          128,
           0
         ],
         "id": "a1b2c3d4-0001-4000-8000-000000000001",
@@ -379,7 +280,7 @@
           "columns": {
             "mappingMode": "defineBelow",
             "value": {
-              "form_timestamp": "={{ $('Normalização').item.json.form_timestamp }}",
+              "form_timestamp": "={{ $('Google Sheets Trigger').item.json.form_timestamp }}",
               "parecer_doc_url": "={{ 'https://docs.google.com/document/d/' + $('Copiar Template').item.json.id + '/edit' }}",
               "reprocessar": ""
             },
@@ -715,7 +616,7 @@
         "type": "n8n-nodes-base.googleSheets",
         "typeVersion": 4.7,
         "position": [
-          1200,
+          608,
           0
         ],
         "id": "a1b2c3d4-0002-4000-8000-000000000002",
@@ -730,57 +631,6 @@
     ],
     "connections": {
       "Google Sheets Trigger": {
-        "main": [
-          [
-            {
-              "node": "Normalização",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Normalização": {
-        "main": [
-          [
-            {
-              "node": "Condição Critica",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Condição Critica": {
-        "main": [
-          [
-            {
-              "node": "App Critico",
-              "type": "main",
-              "index": 0
-            }
-          ],
-          [
-            {
-              "node": "App Padrão",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "App Critico": {
-        "main": [
-          [
-            {
-              "node": "Gerador de Score",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "App Padrão": {
         "main": [
           [
             {
@@ -845,7 +695,7 @@
       "node:Google Sheets Trigger": {
         "documentId": "<SPREADSHEET_ID>",
         "sheetId": 1333426654,
-        "lastIndexChecked": 22,
+        "lastIndexChecked": 24,
         "lastRevision": 161,
         "lastRevisionLink": "https://docs.google.com/spreadsheets/export?id=<SPREADSHEET_ID>&revision=161&exportFormat=xlsx"
       }
@@ -854,9 +704,9 @@
       "templateCredsSetupCompleted": true
     },
     "pinData": {},
-    "versionId": "232cb57c-cbba-4307-aa2a-d2200f9ede43",
-    "activeVersionId": "232cb57c-cbba-4307-aa2a-d2200f9ede43",
-    "versionCounter": 454,
+    "versionId": "9d38c4c6-dc25-48f1-9782-3ff519a1939d",
+    "activeVersionId": "9d38c4c6-dc25-48f1-9782-3ff519a1939d",
+    "versionCounter": 462,
     "triggerCount": 1,
     "tags": [],
     "shared": [

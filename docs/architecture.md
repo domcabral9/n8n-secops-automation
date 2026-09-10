@@ -11,13 +11,8 @@ flowchart TD
     A[Google Forms<br/>SecOps - Softwares Homologados] -->|onFormSubmit| B["Apps Script<br/>(apps-script/normalizacao.gs)"]
     B -->|le respostas por ID de pergunta<br/>compara contra QUESTION_ID_MAP| C[(Aba Normalizado<br/>na mesma planilha)]
 
-    C -->|polling| D[Google Sheets Trigger]
-    D --> E[Normalização<br/>Set nativo, copia 1:1]
-    E --> F{Condição Crítica<br/>criticidade = Crítica?}
-    F -->|sim| G[App Crítico]
-    F -->|não| H[App Padrão]
-    G --> I["Gerador de Score<br/>(nodes/risk/risk-score-generator.js)"]
-    H --> I
+    C -->|polling rowAdded| D[Google Sheets Trigger]
+    D -->|linha ja normalizada,<br/>lida direto| I["Gerador de Score<br/>(nodes/risk/risk-score-generator.js)"]
     I -->|risco por criterio,<br/>dimensao Probabilidade/Impacto| J["Decisão Técnica<br/>(nodes/decision/technical-decision.js)"]
     J -->|parecer + score + classificacao| K[Copiar Template<br/>Google Drive]
     K -->|novo Doc por submissao| L[Update a document<br/>Google Docs - replaceAll]
@@ -27,6 +22,11 @@ flowchart TD
     style C fill:#1a2942,stroke:#4a7ab8,color:#e8eef7
     style L fill:#1a2942,stroke:#4a7ab8,color:#e8eef7
 ```
+
+O n8n não tem nenhum node de normalização/transformação próprio: a linha que chega da aba `Normalizado`
+já vem com nomes de campo limpos e fixos (trabalho do Apps Script), então o `Gerador de Score` lê o
+`$json` do trigger direto. Um branch antigo de classificação (`Condição Crítica` → `App Crítico`/`App
+Padrão`) foi removido - só produzia um campo `risk_flag` que nenhum node downstream consumia.
 
 ## Por que a normalização vive fora do n8n
 

@@ -4,9 +4,9 @@
  *
  * Calcula Probabilidade, Impacto e o score final (0-5, maior = mais seguro) a
  * partir dos campos ja normalizados pelo Apps Script (ver
- * apps-script/normalizacao.gs) e repassados pelo node "Normalizacao" do n8n.
- * Nao deve receber nem tratar nomes de campo alternativos - o contrato de
- * entrada e fixo.
+ * apps-script/normalizacao.gs), lidos direto da linha da aba Normalizado pelo
+ * Google Sheets Trigger. Nao deve receber nem tratar nomes de campo
+ * alternativos - o contrato de entrada e fixo.
  *
  * Segue o mesmo padrao do risk-engine.service.ts do morpheus-beta: cada
  * criterio tem peso (importancia) e dimensao (PROBABILITY ou IMPACT), o motor
