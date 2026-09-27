@@ -2,3 +2,7 @@
 .env.*
 !.env.example
 node_modules/
+
+# Denylist local do scripts/check-style.mjs (ex.: nome real do empregador) -
+# nunca commitado, ver docs/style-guide.md.
+.claude/style-check-local.json
