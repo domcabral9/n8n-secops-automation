@@ -22,8 +22,10 @@ um modelo.
 **Escopo**: tudo que entra no histórico do repositório ou fica visível a um leitor externo - comentário
 de código, mensagem de commit, corpo de PR, README, esta própria documentação, texto de CV/LinkedIn.
 
-**Como aplicar**: antes de finalizar qualquer texto, escanear por "—" e reescrever usando um dos sinais
-de pontuação acima.
+**Como aplicar**: bloqueado automaticamente por `scripts/check-style.mjs` - roda via hook do Claude Code
+(`.claude/settings.json`, `PostToolUse` em qualquer edição de `.md`) e via CI (`.github/workflows/
+style-check.yml`) em todo PR. Regra mecânica, sem falso positivo possível - a única exceção é este
+próprio arquivo, que precisa citar o caractere como exemplo.
 
 ## Evitar contrastes negativos redundantes
 
@@ -38,6 +40,13 @@ acrescenta nada que o leitor não já soubesse.
 **Teste prático antes de manter um contraste negativo**: remover a parte negada mentalmente e
 perguntar - o leitor perde alguma informação real que ele não teria adivinhado sozinho? Se a resposta
 for não, cortar.
+
+**Como aplicar**: `scripts/check-style.mjs` lista candidatos (padrão "X (não/nunca Y)" ou ", não/nunca
+Y") toda vez que um `.md` é editado (hook) e em todo PR (CI), mas **nunca bloqueia** - é uma regra
+semântica, não mecânica (auditoria real: ~30 candidatos nos docs existentes deste repo, só 1 era
+violação de verdade). Cada candidato listado precisa passar pelo teste prático acima manualmente antes
+de considerar o texto pronto - foi exatamente esse teste, rodado tarde demais, que pegou a violação real
+que motivou este mecanismo (README, frase de abertura: "Automação real (não um exercício hipotético)").
 
 ## Nunca nomear o empregador real
 
@@ -69,5 +78,19 @@ commit ou uma PR devem ser lidos como o trabalho do autor do projeto, ponto fina
 **Escopo**: mensagem de commit (nenhum trailer `Co-authored-by`/similar), corpo de Pull Request (nenhum
 rodapé tipo "Gerado com..."), comentários em qualquer sistema onde o projeto vive (GitHub, Trello).
 
-**Como aplicar**: antes de criar qualquer commit ou PR, confirmar que nenhuma linha do tipo acima foi
-incluída.
+**Como aplicar**: `scripts/check-style.mjs` bloqueia automaticamente trailers `Co-Authored-By` (Claude/
+Anthropic) e rodapés "Generated with Claude Code" em qualquer `.md`, via hook e via CI - mesmo mecanismo
+das duas regras acima. Commits e PRs em si (não são arquivo `.md`) continuam sob revisão manual antes de
+criar: confirmar que nenhuma linha do tipo acima foi incluída.
+
+## Enforcement mecânico: por que hook + CI, não só revisão manual
+
+Até 2026-09-27, as 4 regras acima existiam só como texto aqui, com a instrução "escanear antes de
+finalizar" - ou seja, o único mecanismo de verificação era alguém (ou uma IA) lembrar de checar, toda
+vez, sem nenhum artefato que pegasse um esquecimento. Isso já falhou duas vezes: um em-dash real em
+`docs/DEVELOPMENT.md` numa sessão anterior, e o contraste negativo redundante na primeira frase do
+README que motivou este mecanismo. `scripts/check-style.mjs` (chamado por `.claude/settings.json` e por
+`.github/workflows/style-check.yml`) fecha essa lacuna pras duas regras 100% mecânicas (em-dash,
+assinatura de IA) - continuam bloqueadas mesmo que ninguém lembre de olhar. A regra de contraste
+negativo continua exigindo julgamento (o teste prático não é automatizável sem gerar falso positivo em
+massa), mas agora pelo menos todo candidato aparece automaticamente, em vez de depender só de memória.

@@ -1,6 +1,6 @@
 # n8n-secops-automation
 
-Automação real (não um exercício hipotético) de homologação de risco de software: um Google Forms
+Automação de homologação de risco de software para um processo corporativo real: um Google Forms
 que qualquer área da empresa usa pra pedir a adoção de um novo software vira, sem trabalho manual, um
 parecer técnico completo, um por submissão. Construído sozinho por um analista de Segurança da
 Informação, ainda em ambiente de desenvolvimento (a adoção oficial depende de infraestrutura que a

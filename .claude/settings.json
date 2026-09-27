@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/check-style.mjs --hook",
+            "timeout": 15,
+            "statusMessage": "Checando style-guide.md (em-dash, assinatura de IA, contraste negativo)..."
+          }
+        ]
+      }
+    ]
+  }
+}
