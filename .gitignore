@@ -3,6 +3,7 @@
 !.env.example
 node_modules/
 
-# Denylist local do scripts/check-style.mjs (ex.: nome real do empregador) -
-# nunca commitado, ver docs/style-guide.md.
-.claude/style-check-local.json
+# Pasta de configuracao do Claude Code - fica so local, nunca commitada
+# (inclui o hook de PostToolUse do scripts/check-style.mjs, que passa a
+# valer so nesta maquina; ver docs/DEVELOPMENT.md).
+.claude/

@@ -4,10 +4,10 @@ Automação de homologação de risco de software para um processo corporativo r
 que qualquer área da empresa usa pra pedir a adoção de um novo software vira, sem trabalho manual, um
 parecer técnico completo, um por submissão. Construído sozinho por um analista de Segurança da
 Informação, ainda em ambiente de desenvolvimento (a adoção oficial depende de infraestrutura que a
-empresa ainda vai disponibilizar), projeto irmão do [`morpheus-beta`](https://github.com/domcabral9/morpheus-beta)
-(mesmo problema de risco-homologação, stack e contexto completamente diferentes: aqui é n8n Community +
+empresa ainda vai disponibilizar), projeto irmão de outro projeto pessoal do mesmo autor sobre o mesmo
+problema de risco-homologação, em stack e contexto completamente diferentes: aqui é n8n Community +
 Google Workspace sobre um processo corporativo já em uso, lá é uma plataforma full-stack construída do
-zero como projeto educacional).
+zero como projeto educacional.
 
 ## O que o projeto faz
 
@@ -38,8 +38,8 @@ ver [`docs/architecture.md`](./docs/architecture.md) pro raciocínio completo.
 
 ## Metodologia do motor de risco
 
-Mesma abordagem clássica de avaliação de risco usada no [`morpheus-beta`](https://github.com/domcabral9/morpheus-beta)
-- probabilidade x impacto, alinhada com frameworks como o NIST SP 800-30: cada critério de segurança
+Abordagem clássica de avaliação de risco - probabilidade x impacto, alinhada com frameworks como o
+NIST SP 800-30: cada critério de segurança
 (MFA, SSO, exposição à internet, controle de acesso, auditoria, criticidade do negócio, dados pessoais)
 contribui, com peso próprio, pra uma das duas dimensões - **Probabilidade** (o quanto ele afeta a chance
 de um incidente acontecer) ou **Impacto** (o quanto ele afeta a gravidade se acontecer) - e o resultado

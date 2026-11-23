@@ -22,10 +22,12 @@ um modelo.
 **Escopo**: tudo que entra no histórico do repositório ou fica visível a um leitor externo - comentário
 de código, mensagem de commit, corpo de PR, README, esta própria documentação, texto de CV/LinkedIn.
 
-**Como aplicar**: bloqueado automaticamente por `scripts/check-style.mjs` - roda via hook do Claude Code
-(`.claude/settings.json`, `PostToolUse` em qualquer edição de `.md`) e via CI (`.github/workflows/
-style-check.yml`) em todo PR. Regra mecânica, sem falso positivo possível - a única exceção é este
-próprio arquivo, que precisa citar o caractere como exemplo.
+**Como aplicar**: bloqueado automaticamente por `scripts/check-style.mjs` - via CI (`.github/workflows/
+style-check.yml`) em todo PR, e localmente via hook do Claude Code (`.claude/settings.json`,
+`PostToolUse` em qualquer edição de `.md`) quando configurado nesta máquina - esse arquivo é
+intencionalmente local, não versionado (ver `docs/DEVELOPMENT.md`), então uma clonagem nova do repo
+não vem com o hook de fábrica, só com o CI. Regra mecânica, sem falso positivo possível - a única
+exceção é este próprio arquivo, que precisa citar o caractere como exemplo.
 
 ## Evitar contrastes negativos redundantes
 
@@ -89,8 +91,10 @@ Até 2026-09-27, as 4 regras acima existiam só como texto aqui, com a instruç�
 finalizar" - ou seja, o único mecanismo de verificação era alguém (ou uma IA) lembrar de checar, toda
 vez, sem nenhum artefato que pegasse um esquecimento. Isso já falhou duas vezes: um em-dash real em
 `docs/DEVELOPMENT.md` numa sessão anterior, e o contraste negativo redundante na primeira frase do
-README que motivou este mecanismo. `scripts/check-style.mjs` (chamado por `.claude/settings.json` e por
-`.github/workflows/style-check.yml`) fecha essa lacuna pras duas regras 100% mecânicas (em-dash,
-assinatura de IA) - continuam bloqueadas mesmo que ninguém lembre de olhar. A regra de contraste
-negativo continua exigindo julgamento (o teste prático não é automatizável sem gerar falso positivo em
-massa), mas agora pelo menos todo candidato aparece automaticamente, em vez de depender só de memória.
+README que motivou este mecanismo. `scripts/check-style.mjs` (chamado pelo CI em
+`.github/workflows/style-check.yml`, e opcionalmente por um hook local do Claude Code em
+`.claude/settings.json`, não versionado) fecha essa lacuna pras duas regras 100% mecânicas (em-dash,
+assinatura de IA) em qualquer PR - continuam bloqueadas mesmo que ninguém lembre de olhar. A regra de
+contraste negativo continua exigindo julgamento (o teste prático não é automatizável sem gerar falso
+positivo em massa), mas agora pelo menos todo candidato aparece automaticamente, em vez de depender só
+de memória.
