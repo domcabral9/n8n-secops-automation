@@ -48,6 +48,22 @@ n8n-secops-automation/
 qualquer mudança no editor do n8n precisa ser exportada e commitada de volta pra não divergir do que
 está rodando ao vivo (ver gotcha de client-side cache abaixo).
 
+**`.claude/` é intencionalmente local, não versionado.** Inclui o hook de `PostToolUse` que roda
+`scripts/check-style.mjs` automaticamente a cada edição de `.md` - útil, mas não viaja com uma
+clonagem nova do repo (o CI em `.github/workflows/style-check.yml` cobre qualquer PR independente
+disso). Pra recriar o hook numa máquina nova:
+```json
+{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Write|Edit",
+      "hooks": [{ "type": "command", "command": "node scripts/check-style.mjs --hook" }]
+    }]
+  }
+}
+```
+salvo em `.claude/settings.json` na raiz do repo.
+
 **O que é commitado não é o export bruto.** Desde a limpeza de segurança de 2026-09-02, o export real
 da instância tem IDs de recurso reais (planilha, template do Doc, pasta do Drive, IDs de credencial) e
 o nome legível do formulário - nenhum disso vai pro repositório em texto puro. Antes de commitar um
